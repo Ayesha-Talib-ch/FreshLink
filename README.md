@@ -12,9 +12,18 @@ Development started. Each stage is added and tested one at a time.
 |---|---|
 | 0a. Repository scaffold + backend skeleton | Done |
 | 0b. PostgreSQL (Docker), SQLAlchemy, Alembic migrations, error format, DB health check | Done |
-| 1. Authentication and roles | Next |
+| 1a. Users table, register, login, `/auth/me`, role checks, create-admin command | Done |
+| 1b. Refresh tokens, logout, change password, login rate limiting | Next |
 
-There are no app tables, login or UI yet.
+There's no website or mobile UI yet.
+
+## Create the first administrator
+Admins can't sign up through the website or app. Create the first one on your own computer
+(from `backend/`, with the venv active). You'll be asked for the details and a hidden password:
+
+```powershell
+python -m app.cli create-admin
+```
 
 ## Database: first-time setup (Docker Desktop must be running)
 

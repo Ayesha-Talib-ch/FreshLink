@@ -15,7 +15,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy.engine import URL, make_url
 
@@ -61,6 +61,13 @@ class Settings(BaseSettings):
     # Seconds to wait for PostgreSQL before giving up (keeps /health fast).
     db_connect_timeout: int = 5
 
+    # ---------- Authentication ----------
+    # Secret key that signs login tokens. Anyone who knows it can forge a token
+    # for any user, so it lives only in backend/.env and must be long and random.
+    jwt_secret: SecretStr | None = None
+    jwt_algorithm: Literal["HS256"] = "HS256"
+    access_token_expire_minutes: int = Field(default=15, ge=1, le=24 * 60)
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_comma_separated(cls, value: object) -> object:
@@ -68,6 +75,17 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    def get_jwt_secret(self) -> str:
+        if self.jwt_secret is None:
+            raise ValueError(
+                "JWT_SECRET is not set. Add a long random value to backend/.env "
+                "(see backend/.env.example for how to generate one)."
+            )
+        secret = self.jwt_secret.get_secret_value()
+        if len(secret) < 32:
+            raise ValueError("JWT_SECRET is too short: use at least 32 random characters.")
+        return secret
 
     def get_database_url(self) -> URL:
         """Build the SQLAlchemy connection URL (driver: psycopg 3).

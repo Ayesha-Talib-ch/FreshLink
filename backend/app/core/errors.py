@@ -34,12 +34,14 @@ class AppError(Exception):
         code: str,
         message: str,
         details: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.message = message
         self.details = details or {}
+        self.headers = headers or {}
 
 
 def error_response(
@@ -66,7 +68,9 @@ _HTTP_CODES = {
 
 
 async def _app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    return error_response(exc.status_code, exc.code, exc.message, exc.details)
+    response = error_response(exc.status_code, exc.code, exc.message, exc.details)
+    response.headers.update(exc.headers)
+    return response
 
 
 async def _http_error_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:

@@ -23,6 +23,9 @@ from app.db.session import create_db_engine, create_session_factory
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
 
+    # Fail at start-up (not at the first login) if the token secret is missing or weak.
+    settings.get_jwt_secret()
+
     # Creating the engine does NOT connect yet; the first query does.
     # So the API can start even if PostgreSQL is down (and /health reports it).
     engine = create_db_engine(settings)
