@@ -1,0 +1,68 @@
+# ============================================================
+# FreshLink .gitignore  (one file for the whole monorepo)
+# ============================================================
+
+# ---------- Secrets: NEVER commit these ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+google-services.json
+serviceAccountKey*.json
+
+# ---------- Python (backend + ml) ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# ---------- Uploaded files (local dev storage) ----------
+backend/storage/
+
+# ---------- ML artifacts (trained models are regenerated, not committed) ----------
+ml/artifacts/
+*.joblib
+.ipynb_checkpoints/
+
+# ---------- Node / JavaScript (web, mobile, packages) ----------
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# ---------- Expo / React Native ----------
+.expo/
+.expo-shared/
+web-build/
+*.apk
+*.aab
+android/
+ios/
+
+# ---------- Editors / OS ----------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Claude Code local settings ----------
+.claude/settings.local.json

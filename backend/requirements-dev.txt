@@ -1,0 +1,5 @@
+# Development and testing tools (not needed on the production server).
+-r requirements.txt
+
+pytest==9.2.0
+httpx2==2.16.0  # used by FastAPI's TestClient (successor of httpx recommended by Starlette)
