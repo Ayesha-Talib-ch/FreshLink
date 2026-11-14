@@ -121,3 +121,22 @@ class UrgencyLevel(StrEnum):
     HIGH = "high"
     CRITICAL = "critical"
     INCOMPLETE = "incomplete"  # required date information is missing (plan section 1.3)
+
+
+class RequestStatus(StrEnum):
+    PENDING = "pending"  # waiting for the provider / allocation
+    APPROVED = "approved"  # full quantity allocated (allocation stage)
+    PARTIALLY_APPROVED = "partially_approved"  # part of the quantity allocated (allocation stage)
+    REJECTED = "rejected"  # provider/admin said no, with a reason
+    CANCELLED = "cancelled"  # the receiver withdrew it
+    EXPIRED = "expired"  # the listing ended before a decision
+    COMPLETED = "completed"  # food received (collection stage)
+
+
+# Requests that still "hold a place" on a listing: a receiver may have only one of these per listing.
+ACTIVE_REQUEST_STATUSES = (RequestStatus.PENDING, RequestStatus.APPROVED, RequestStatus.PARTIALLY_APPROVED)
+
+
+class CollectionPreference(StrEnum):
+    SELF_PICKUP = "self_pickup"  # the receiver collects the food themselves
+    NEEDS_VOLUNTEER = "needs_volunteer"  # a volunteer should deliver it (volunteer stage)

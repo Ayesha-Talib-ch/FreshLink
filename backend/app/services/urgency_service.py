@@ -21,6 +21,7 @@ from app.domain.enums import ListingStatus
 from app.engines.urgency import ListingDates, UrgencyResult, UrgencyRule, assess
 from app.models.category import UrgencyRuleRow
 from app.models.listing import FoodListing, ListingStatusHistory
+from app.services import request_service
 
 OPEN_STATUSES = (ListingStatus.ACTIVE, ListingStatus.PAUSED)
 
@@ -82,6 +83,7 @@ def scan(db: Session, now: datetime | None = None) -> dict[str, Any]:
 
     expired: list[uuid.UUID] = []
     level_changes = 0
+    expired_requests = 0
     for listing in listings:
         result = assess_listing(listing, rules[listing.food_category_id], now)
         if result.is_past_deadline:
@@ -91,9 +93,11 @@ def scan(db: Session, now: datetime | None = None) -> dict[str, Any]:
             listing.status = ListingStatus.EXPIRED
             listing.version += 1
             expired.append(listing.id)
+            expired_requests += request_service.expire_pending_for_listing(
+                db, listing, None, "the listing expired: " + result.explanation)
         elif listing.urgency_level != result.level:
             level_changes += 1
         store_level(listing, result, now)
     db.commit()
     return {"checked": len(listings), "expired": len(expired), "level_changes": level_changes,
-            "expired_ids": [str(i) for i in expired]}
+            "expired_requests": expired_requests, "expired_ids": [str(i) for i in expired]}

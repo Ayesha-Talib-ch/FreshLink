@@ -6,6 +6,7 @@ Later stages add requests, allocations, collections and assignments here.
 
 from app.core.errors import AppError
 from app.domain.enums import ListingStatus as L
+from app.domain.enums import RequestStatus as R
 
 # Changes a PROVIDER may make to their own listing.
 LISTING_PROVIDER_TRANSITIONS: dict[L, set[L]] = {
@@ -27,5 +28,26 @@ def check_listing_transition(current: L, target: L) -> None:
         raise AppError(
             409, "INVALID_STATUS_TRANSITION",
             f"A listing that is '{current.value}' can't be changed to '{target.value}'.",
+            {"current_status": current.value, "requested_status": target.value},
+        )
+
+
+# ------------------------------------------------------------------ food requests
+REQUEST_TRANSITIONS: dict[R, set[R]] = {
+    R.PENDING: {R.APPROVED, R.PARTIALLY_APPROVED, R.REJECTED, R.CANCELLED, R.EXPIRED},
+    R.APPROVED: {R.CANCELLED, R.COMPLETED},  # cancel before handover; complete after receipt
+    R.PARTIALLY_APPROVED: {R.CANCELLED, R.COMPLETED},
+    R.REJECTED: set(),
+    R.CANCELLED: set(),
+    R.EXPIRED: set(),
+    R.COMPLETED: set(),
+}
+
+
+def check_request_transition(current: R, target: R) -> None:
+    if target not in REQUEST_TRANSITIONS.get(current, set()):
+        raise AppError(
+            409, "INVALID_STATUS_TRANSITION",
+            f"A request that is '{current.value}' can't be changed to '{target.value}'.",
             {"current_status": current.value, "requested_status": target.value},
         )

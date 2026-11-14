@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.domain.enums import FilePurpose, ListingStatus, UserRole
+from app.domain.formatting import format_quantity
 from app.domain.state_machines import LISTING_EDITABLE, check_listing_transition
 from app.models.category import FoodCategory
 from app.models.listing import FoodListing, ListingStatusHistory
@@ -22,7 +23,7 @@ from app.models.profiles import ProviderProfile
 from app.models.user import User
 from app.models.verification import StoredFile
 from app.schemas.listings import ListingIn
-from app.services import urgency_service
+from app.services import request_service, urgency_service
 
 # How far ahead a listing may be scheduled. Surplus food is short-lived; a date in
 # 2099 is almost certainly a typo.
@@ -153,7 +154,7 @@ def update(db: Session, user: User, listing_id: uuid.UUID, expected_version: int
                        {"status": listing.status.value})
     if Decimal(body.total_quantity) < listing.allocated_quantity:
         raise _field_error("QUANTITY_BELOW_ALLOCATED",
-                           f"{listing.allocated_quantity} {listing.unit.value} are already promised to receivers; "
+                           f"{format_quantity(listing.allocated_quantity, listing.unit)} already promised to receivers; "
                            "the total can't be lower than that.", "total_quantity")
     _validate(db, listing.provider, body, _now())
     _apply(listing, listing.provider, body)
@@ -170,10 +171,15 @@ def change_status(db: Session, user: User, listing_id: uuid.UUID, target: Listin
     check_listing_transition(listing.status, target)
     if target == ListingStatus.ACTIVE and listing.collection_deadline <= _now():
         raise AppError(409, "DEADLINE_PASSED", "The collection deadline has passed; this listing can't be resumed.")
+    if target == ListingStatus.REMOVED and request_service.has_any_requests(db, listing.id):
+        # Requests are history (FR25): a requested listing is closed, never removed (plan 4.4).
+        raise AppError(409, "LISTING_HAS_REQUESTS", "Receivers have requested this food. Close the listing instead.")
     previous = listing.status
     listing.status = target
     listing.version += 1
     _history(db, listing, previous, target, user, (reason or "").strip() or None)
+    if target in (ListingStatus.CLOSED, ListingStatus.REMOVED):
+        request_service.expire_pending_for_listing(db, listing, user.id, f"listing {target.value} by the provider")
     db.commit()
     db.refresh(listing)
     return _with_urgency(db, listing)

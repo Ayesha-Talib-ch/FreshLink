@@ -1,9 +1,9 @@
-# FreshLink — Manual Testing Guide (Stages 0–4a)
+# FreshLink — Manual Testing Guide (Stages 0–4b)
 
-This guide tests **every API built so far (49 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (57 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
-- **Time needed:** about 95 minutes
+- **Time needed:** about 110 minutes
 - **You need:** any small real PDF, JPG or PNG file on your computer (for section 10.4)
 - **Tick each box** as you go. If a result differs, copy the response and send it to the team.
 - All test accounts use emails starting with `guide.` so they're easy to delete afterwards (section 11).
@@ -470,13 +470,42 @@ The receiver's saved location (section 6) is Model Town with a 6 km radius.
 | ☐ | As the provider: pause the naan, then browse again as the receiver | the naan disappears (paused food is hidden) |
 | ☐ | `GET /api/v1/listings` with the **provider's** token | **403** (only receivers browse) |
 
+
+### 10.8 Food requests (Stage 4b)
+
+As the **provider**, create a fresh listing for the requests: "Bread packages" (Bakery items, `package`, `total_quantity` 30),
+pickup window from 1 h to 5 h from now, at the business address. 📋 copy its `id` as **L3**.
+As the **receiver** (verified in 10.7), set your capacity: `PUT /api/v1/receivers/me/food-preferences` with Bakery items, `max_quantity_per_pickup` 15, `unit` `package`.
+
+| ✓ | As the receiver: `POST /api/v1/requests` with… | Expected |
+|---|---|---|
+| ☐ | `{"listing_id": "L3", "requested_quantity": 20}` | **422** `EXCEEDS_CAPACITY`, *…at most 15 packages of this food per pickup* |
+| ☐ | `{"listing_id": "L3", "requested_quantity": 2.5}` | **422** `WHOLE_NUMBER_REQUIRED` (packages can't be split) |
+| ☐ | `{"listing_id": "L3", "requested_quantity": 15, "purpose": "Evening meal", "collection_preference": "self_pickup"}` | **201** `pending`, with `distance_km`. 📋 copy `id` as **Q1** |
+| ☐ | the same again | **409** `DUPLICATE_REQUEST` (one active request per listing) |
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Receiver: `GET /api/v1/requests` | your request(s) only |
+| ☐ | Receiver: `PATCH /api/v1/requests/{request_id}` (Q1) with `{"requested_quantity": 12, "purpose": "Evening meal"}` | **200**, `requested_quantity` 12, `version` 2 |
+| ☐ | Provider: `GET /api/v1/listings/{listing_id}/requests` (L3) | the request, **with the receiver's phone and address** (allowed: they asked for your food) |
+| ☐ | Provider: `POST /api/v1/requests/{request_id}/reject` (Q1) with `{"reason": "no"}` | **422** (a clear reason is required) |
+| ☐ | Provider: same with `{"reason": "Please collect from our other branch tomorrow."}` | **200** `rejected` |
+| ☐ | Receiver: `GET /api/v1/requests/{request_id}` (Q1) | `rejected`, with the provider's reason |
+| ☐ | Receiver: request L3 again (quantity 10) | **201**: allowed after a rejection. 📋 copy as **Q2** |
+| ☐ | Provider: `DELETE /api/v1/listings/{listing_id}` (L3) | **409** `LISTING_HAS_REQUESTS` (close it instead) |
+| ☐ | Provider: `POST /api/v1/listings/{listing_id}/close` (L3) | **200** `closed` |
+| ☐ | Receiver: `GET /api/v1/requests/{request_id}/history` (Q2) | `pending` → `expired`, reason *listing closed by the provider* |
+| ☐ | Volunteer: `GET /api/v1/requests` | **403** (volunteers don't have requests) |
+
 ---
 
 ## 11. Clean up the test accounts
 
-This deletes only the `guide.` accounts. Listings must be deleted first (a provider with listings can't be deleted, which protects history); profiles, sessions and listing history then go automatically (ON DELETE CASCADE).
+This deletes only the `guide.` accounts. Requests and then listings must be deleted first (the database protects history: a receiver with requests, or a provider with listings, can't simply be deleted); profiles, sessions and listing history then go automatically (ON DELETE CASCADE).
 
 ```powershell
+docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM food_requests WHERE receiver_id IN (SELECT r.id FROM receiver_profiles r JOIN users u ON u.id = r.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM food_listings WHERE provider_id IN (SELECT p.id FROM provider_profiles p JOIN users u ON u.id = p.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM users WHERE email LIKE 'guide.%';"
 ```
@@ -495,7 +524,7 @@ cd D:\University\FreshLink\backend
 .\.venv\Scripts\Activate.ps1
 pytest
 ```
-☐ `375 passed`. Docker must be running. The tests use a separate `freshlink_test` database, so your data is never touched.
+☐ `409 passed`. Docker must be running. The tests use a separate `freshlink_test` database, so your data is never touched.
 
 ---
 

@@ -19,7 +19,8 @@ Development started. Each stage is added and tested one at a time.
 | 3a. Food listings: create / view / edit (optimistic locking) / pause / resume / close / remove, category date rules, food photos, status history | Done |
 | 3b. Urgency engine (rule-based, per-category thresholds, explanations), admin urgency rules, expiry scan (`python -m app.cli urgency-scan`) | Done |
 | 4a. Receiver browse / search: typo-tolerant name search, category, distance (Haversine) with saved location and pickup radius, quantity + unit, pickup time, urgency; 5 sort orders; only food that can still be collected | Done |
-| 4b. Food requests (quantity, purpose, collection preference; cancel / edit; provider reject; duplicates blocked) | Next |
+| 4b. Food requests: create (eligibility, availability, quantity and capacity checks), role-scoped lists, edit / cancel, provider reject with reason, incoming requests per listing, requests expire when a listing ends | Done |
+| 5. Matching (recommended receivers with reasons) and allocation (dividing food between requests) | Next |
 
 There's no website or mobile UI yet.
 

@@ -90,9 +90,24 @@ class ReceiverProfile(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     not_for_resale_declared: Mapped[bool] = mapped_column(Boolean, server_default=false())
 
     category: Mapped[ReceiverCategory] = relationship(lazy="joined")
+    # The account (name, phone). Loaded on demand; used when a provider views a request.
+    user: Mapped["User"] = relationship(lazy="select")  # noqa: F821
     food_preferences: Mapped[list["ReceiverFoodPreference"]] = relationship(
         cascade="all, delete-orphan", lazy="selectin", order_by="ReceiverFoodPreference.food_category_id"
     )
+
+    # Shown to a provider only inside a request for THEIR listing (plan section 5.3).
+    @property
+    def category_name(self) -> str:
+        return self.category.name
+
+    @property
+    def contact_name(self) -> str:
+        return self.user.full_name
+
+    @property
+    def contact_phone(self) -> str:
+        return self.user.phone
 
 
 class ReceiverFoodPreference(TimestampMixin, Base):

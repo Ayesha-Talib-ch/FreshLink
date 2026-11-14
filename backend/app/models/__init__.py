@@ -15,6 +15,7 @@ from app.models.profiles import (
     VolunteerProfile,
 )
 from app.models.refresh_token import RefreshToken
+from app.models.request import FoodRequest, RequestStatusHistory
 from app.models.user import User
 from app.models.verification import (
     StoredFile,
@@ -28,6 +29,7 @@ __all__ = [
     "Base",
     "FoodCategory",
     "FoodListing",
+    "FoodRequest",
     "ListingStatusHistory",
     "ProviderCategory",
     "ProviderProfile",
@@ -36,6 +38,7 @@ __all__ = [
     "ReceiverProfile",
     "StoredFile",
     "RefreshToken",
+    "RequestStatusHistory",
     "UrgencyRuleRow",
     "User",
     "VerificationDocument",

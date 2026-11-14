@@ -69,6 +69,14 @@ This file records decisions taken during development and any questions that are 
 | D53 | 2026-11-14 | The urgency filter/sort uses the stored level (refreshed by writes and the scan); the response shows the live level | Fast SQL filtering; at most one scan interval behind |
 | D54 | 2026-11-14 | Admins may also use `GET /listings` (monitoring); providers and volunteers may not | Spec: browsing is a receiver feature; full admin listing management comes in the admin stage |
 
+| D55 | 2026-11-14 | A request does not reserve food; approval and quantities are decided by the allocation stage | Spec 5.5: when requests exceed supply, an allocation suggestion divides the food; approved quantity lives on the allocation (plan 3.4) |
+| D56 | 2026-11-14 | Request checks: verified + **eligible** receiver with a profile; listing active with time and quantity left; quantity ≤ remaining; whole numbers for countable units; ≤ the receiver's capacity for that category **when the capacity uses the same unit**; preferred time inside the pickup window | Spec 5.3 "system validates the request"; plan issue H2 |
+| D57 | 2026-11-14 | One active request per receiver per listing (pre-check + partial unique index); a new one is allowed after cancelling or rejection | Spec 8.4 "duplicate requests should be prevented"; the index also wins when two taps arrive at once |
+| D58 | 2026-11-14 | The provider sees the receiver's address, phone and contact name only on requests for their own listing | Plan 5.3: contact details only within an authorized transaction |
+| D59 | 2026-11-14 | Closing/removing a listing, or the expiry scan, turns its pending requests into `expired` (with history); a listing that has any requests can't be removed, only closed | Receivers aren't left waiting; requests are history (FR25) |
+| D60 | 2026-11-14 | Rejections need a reason (≥ 5 characters), shown to the receiver; an admin's rejection is audited | Spec 4.1 "reject requests with a reason"; spec 4.4.6 admin intervention |
+| D61 | 2026-11-14 | `purpose` is optional for all receivers | Spec 4.2.3 says "if required"; no rule makes it required yet |
+
 ## API review after Stage 2a (2026-11-14)
 
 All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 lines are trivial), 4 problems were fixed (message prefix, wrong 422 docs, missing CORS header on 500, Swagger cookie flow), and every fix has a test that was shown to fail without it.

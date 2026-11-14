@@ -46,3 +46,15 @@ def test_weak_password_rejected(password: str, message: str) -> None:
 def test_password_equal_to_email_rejected() -> None:
     with pytest.raises(ValueError, match="email"):
         check_password_strength("Ali@Example.com", email="ali@example.com")
+
+
+@pytest.mark.parametrize(
+    ("amount", "unit", "text"),
+    [(15, "package", "15 packages"), (1, "package", "1 package"), (12.5, "kg", "12.5 kg"), (1, "kg", "1 kg"),
+     (2.50, "litre", "2.5 litres"), (30, "tray", "30 trays")],
+)
+def test_format_quantity(amount: float, unit: str, text: str) -> None:
+    from app.domain.enums import QuantityUnit
+    from app.domain.formatting import format_quantity
+
+    assert format_quantity(amount, QuantityUnit(unit)) == text
