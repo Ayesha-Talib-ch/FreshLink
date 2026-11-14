@@ -1,0 +1,12 @@
+# Runtime dependencies for the FreshLink backend.
+# Versions are pinned so all three team members get identical behaviour.
+# New packages are added stage by stage (database, auth, ML ...) as features need them.
+
+fastapi==0.162.7
+uvicorn==0.54.0
+pydantic-settings==2.16.3
+
+# Database (Stage 0b)
+SQLAlchemy==2.1.8          # ORM: Python classes <-> PostgreSQL tables
+psycopg[binary]==3.3.9     # PostgreSQL driver
+alembic==1.20.1            # database migrations (versioned schema changes)

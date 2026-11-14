@@ -1,0 +1,10 @@
+[project]
+name = "freshlink-backend"
+version = "0.1.0"
+description = "FreshLink shared REST API (FastAPI) used by both the React website and the Expo Android app"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
