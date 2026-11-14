@@ -26,8 +26,8 @@ Development started. Each stage is added and tested one at a time.
 | 6b. Volunteer assignments: open tasks near the volunteer, claim / assign / accept / decline, step-by-step delivery (collected = handover), receipt completes the task, failures with reasons, admin suggestions / reassign / cancel, contacts only after accepting | Done |
 | 7. In-app notifications: list / unread count / mark read, links to the related record, sent inside the same transaction as each event (requests, decisions, allocations, collections, delivery tasks, verification, urgency, top-5 new-listing matches, admin alerts); admin announcements (everyone / one role / chosen users) and category switches | Done |
 | 8a. Dashboards for all four roles (`/me/dashboard`), the admin dashboard (the spec's 15 metrics, quantities per unit) and activity feed; admin user management: search / filter / view, activate / deactivate / suspend with reasons (sessions end at once, a suspended provider's food is hidden), account history, super admins create admins | Done |
-| 8b. Admin monitoring of listings, requests, allocations, collections and volunteers; listing moderation; problem reports | Next |
-| 8c. Reports and exports, fairness, platform settings, category management, audit-log viewer | Planned |
+| 8b. Admin listings monitor with date warnings; listing moderation (suspend / reinstate / close / remove, with reasons); volunteer overview (load, completion rate); allocation-run monitor (suggested vs approved, overrides); problem reports for every role, reviewed and resolved by admins | Done |
+| 8c. Reports and exports, fairness, platform settings, category management, audit-log viewer | Next |
 
 There's no website or mobile UI yet.
 

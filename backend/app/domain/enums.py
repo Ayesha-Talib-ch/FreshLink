@@ -205,3 +205,29 @@ ACTIVE_ASSIGNMENT_STATUSES = (
     AssignmentStatus.OPEN, AssignmentStatus.ASSIGNED, AssignmentStatus.ACCEPTED, AssignmentStatus.EN_ROUTE_PICKUP,
     AssignmentStatus.COLLECTED, AssignmentStatus.EN_ROUTE_DROPOFF, AssignmentStatus.DELIVERED,
 )
+
+
+class IssueEntityType(StrEnum):
+    """What a problem report is about (plan 3.3 issue_reports)."""
+
+    LISTING = "listing"
+    REQUEST = "request"
+    COLLECTION = "collection"
+    ASSIGNMENT = "assignment"
+
+
+class IssueCategory(StrEnum):
+    WRONG_INFORMATION = "wrong_information"  # e.g. wrong quantity, dates or address on a listing
+    QUANTITY_MISMATCH = "quantity_mismatch"  # less food than promised / handed over
+    FOOD_CONDITION = "food_condition"  # a concern about the food's condition (FreshLink does NOT judge safety)
+    NO_SHOW = "no_show"  # the other side didn't come
+    DELAY = "delay"
+    BEHAVIOUR = "behaviour"  # rude or inappropriate behaviour
+    INAPPROPRIATE = "inappropriate"  # e.g. an inappropriate listing
+    OTHER = "other"
+
+
+class IssueStatus(StrEnum):
+    OPEN = "open"
+    IN_REVIEW = "in_review"
+    RESOLVED = "resolved"

@@ -1,6 +1,6 @@
 # FreshLink — Manual Testing Guide (Stages 0–6b)
 
-This guide tests **every API built so far (104 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (116 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
 - **Time needed:** about 165 minutes
@@ -635,6 +635,30 @@ Everything you did above has already left notifications behind. No new set-up is
 | ☐ | Admin: suspend **your own** id (from `/auth/me`) | **409** `CANNOT_CHANGE_OWN_ACCOUNT` |
 | ☐ | Admin (a super admin, from section 10.2): `POST /api/v1/admin/admins` with `{"email": "guide.admin2@example.com", "phone": "0300 1110010", "full_name": "Second Admin", "password": "Admin-Two-2026"}` | **201**, `"is_super_admin": false`; it can log in |
 | ☐ | Log in as the second admin and try `POST /api/v1/admin/admins` again | **403** (only super admins create admins) |
+
+
+### 10.15 Admin monitoring, moderation and problem reports (Stage 8b)
+
+**Set up.** As the provider, create a listing "Samosa" (Fast food, `piece`, 40, preparation 30 min ago, pickup window
+1 h to 4 h from now). As the NGO, request 10 pieces (📋 copy the request `id` as **R9**).
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Admin: `GET /api/v1/admin/listings?q=samosa` | the listing with `pending_requests: 1` and `date_warnings: []` |
+| ☐ | Admin: `GET /api/v1/admin/listings?status=closed` | listings closed earlier in this guide; receivers never see these |
+| ☐ | Admin: `POST /api/v1/admin/listings/{listing_id}/suspend` with `{"reason": "Checking the photos"}` | **200** `suspended`; the provider gets *"Listing suspended"* |
+| ☐ | NGO: `GET /api/v1/listings` | the samosas are **gone** |
+| ☐ | Provider: `POST /api/v1/listings/{listing_id}/resume` | **409** (only an admin can lift a suspension) |
+| ☐ | Admin: `POST .../reinstate` with `{"reason": "Photos are fine"}` | **200** `active`; visible again |
+| ☐ | NGO: `POST /api/v1/issues` with `{"entity_type": "request", "entity_id": "R9", "category": "delay", "description": "No reply from the shop yet."}` | **201** `open`; the admin gets *"Problem reported: request"* |
+| ☐ | Same again | **409** `DUPLICATE_ISSUE` |
+| ☐ | Volunteer: `POST /api/v1/issues` about R9 | **404** (not involved) |
+| ☐ | Admin: `GET /api/v1/admin/issues?unresolved_only=true` | the report. 📋 copy its `id` as **I1** |
+| ☐ | Admin: `PATCH /api/v1/admin/issues/{issue_id}` (I1) with `{"status": "resolved"}` | **422** `RESOLUTION_NOTE_REQUIRED` |
+| ☐ | Same with `{"status": "resolved", "resolution_note": "We called the shop; pickup at 6 pm."}` | **200**; the NGO gets *"Your problem report was resolved"* |
+| ☐ | Admin: `POST .../close` (the samosa listing) with `{"reason": "Provider asked us by phone"}` | **200** `closed`; R9 becomes `expired` |
+| ☐ | Admin: `GET /api/v1/admin/volunteers` | the volunteer with `completed_deliveries` and `completion_rate` (1.0 after section 10.12) |
+| ☐ | Admin: `GET /api/v1/admin/allocation-runs` | runs with `suggested_total`, `approved_total` and `overrides` |
 
 
 ---

@@ -14,6 +14,7 @@ from app.api.v1 import (
     collections,
     dashboard,
     files,
+    issues,
     listings,
     lookups,
     matching,
@@ -39,5 +40,6 @@ api_router.include_router(collections.router)
 api_router.include_router(assignments.router)
 api_router.include_router(notifications.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(issues.router)
 api_router.include_router(verification.router)
 api_router.include_router(admin.router)

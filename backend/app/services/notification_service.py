@@ -28,6 +28,7 @@ LINKS = {
     "user": "/admin/users/{id}",
     "verification_request": "/admin/verifications/{id}",
     "announcement": "/notifications",
+    "issue": "/issues/{id}",
 }
 
 

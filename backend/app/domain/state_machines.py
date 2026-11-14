@@ -21,6 +21,18 @@ LISTING_PROVIDER_TRANSITIONS: dict[L, set[L]] = {
     L.REMOVED: set(),  # final
 }
 
+# Changes an ADMINISTRATOR may make to any listing (spec 4.4.5: "remove inappropriate listings,
+# close or suspend listings when necessary"). Reinstating a suspension goes back to active.
+LISTING_ADMIN_TRANSITIONS: dict[L, set[L]] = {
+    L.ACTIVE: {L.SUSPENDED, L.CLOSED, L.REMOVED},
+    L.PAUSED: {L.SUSPENDED, L.CLOSED, L.REMOVED},
+    L.FULLY_ALLOCATED: {L.SUSPENDED, L.CLOSED, L.REMOVED},
+    L.SUSPENDED: {L.ACTIVE, L.CLOSED, L.REMOVED},
+    L.CLOSED: {L.REMOVED},
+    L.EXPIRED: {L.REMOVED},
+    L.REMOVED: set(),  # final
+}
+
 # Listings the provider may still edit (dates, quantity, description ...).
 LISTING_EDITABLE = {L.ACTIVE, L.PAUSED}
 
@@ -100,5 +112,14 @@ def check_assignment_transition(current: A, target: A) -> None:
         raise AppError(
             409, "INVALID_STATUS_TRANSITION",
             f"A task that is '{current.value}' can't be changed to '{target.value}'.",
+            {"current_status": current.value, "requested_status": target.value},
+        )
+
+
+def check_listing_admin_transition(current: L, target: L) -> None:
+    if target not in LISTING_ADMIN_TRANSITIONS.get(current, set()):
+        raise AppError(
+            409, "INVALID_STATUS_TRANSITION",
+            f"A listing that is '{current.value}' can't be changed to '{target.value}'.",
             {"current_status": current.value, "requested_status": target.value},
         )

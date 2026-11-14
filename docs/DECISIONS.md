@@ -129,6 +129,13 @@ This file records decisions taken during development and any questions that are 
 | D107 | 2026-11-14 | Suspend and deactivate need a reason (≥ 5 characters), end every session at once and are audited; re-activating notifies the user | Plan 5.2 |
 | D108 | 2026-11-14 | Admins can't change their own status; only a super admin can change another admin's status or create admins (who are never super admins unless chosen) | Prevents lock-outs and privilege abuse |
 | D109 | 2026-11-14 | A suspended or deactivated provider's listings are hidden from browsing and can't be requested; they come back on re-activation. Existing approved collections are left for the admin to handle | Reversible; no data is changed |
+| D110 | 2026-11-14 | Admins monitor requests, allocations, collections and delivery tasks through the shared list endpoints (they already return everything to admins); `/admin/...` endpoints are added only where something new is needed | Avoids two endpoints doing the same thing |
+| D111 | 2026-11-14 | Admin listing moderation: suspend, reinstate (back to active, or fully allocated), close, remove. Each needs a reason (≥ 5 characters), is audited, written to the listing history and sent to the provider. Only an admin can lift a suspension | Spec 4.4.5 |
+| D112 | 2026-11-14 | A suspended listing keeps its pending requests (it may come back) but can't be requested or allocated; closing or removing expires them. Reinstating after the deadline is refused (close it instead) | Receivers aren't left waiting on a dead listing |
+| D113 | 2026-11-14 | Removing a listing is refused while food is still promised (confirmed or in-collection allocations): cancel those first, each with its own reason | Nobody travels to collect food from a removed listing |
+| D114 | 2026-11-14 | Volunteer completion rate = completed / (completed + failed); shown as empty until the first finished delivery | No misleading 0 % for newcomers |
+| D115 | 2026-11-14 | Problem reports: only people involved in a listing, request, collection or delivery task can report on it (others get 404); one open report per person per item; admins get an alert; resolving needs a note that is sent to the reporter; a report can be re-opened unless a newer one is open | Spec 4.2.5 / 4.3.3 / 4.4.8; privacy |
+| D116 | 2026-11-14 | A "food condition" report is passed to an administrator; FreshLink never judges whether food is safe | Plan 1.3 |
 
 ## Known evaluation item
 
