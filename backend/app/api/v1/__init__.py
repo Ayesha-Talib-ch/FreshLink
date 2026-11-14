@@ -9,6 +9,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     admin,
     allocations,
+    assignments,
     auth,
     collections,
     files,
@@ -33,5 +34,6 @@ api_router.include_router(listings.router)
 api_router.include_router(requests.router)
 api_router.include_router(allocations.router)
 api_router.include_router(collections.router)
+api_router.include_router(assignments.router)
 api_router.include_router(verification.router)
 api_router.include_router(admin.router)

@@ -41,7 +41,7 @@ from app.models.listing import FoodListing, ListingStatusHistory
 from app.models.profiles import ProviderProfile, ReceiverProfile
 from app.models.request import FoodRequest, RequestStatusHistory
 from app.models.user import User
-from app.services import urgency_service
+from app.services import assignment_service, urgency_service
 from app.services.audit_service import ClientInfo, record
 
 
@@ -55,6 +55,9 @@ def create_for_allocation(db: Session, allocation: Allocation, request: FoodRequ
               else CollectionMethod.SELF_PICKUP)
     collection = Collection(allocation=allocation, method=method, scheduled_pickup_at=request.preferred_pickup_at)
     db.add(collection)
+    if method == CollectionMethod.VOLUNTEER:
+        db.flush()
+        assignment_service.create_open(db, collection)
     return collection
 
 
@@ -127,7 +130,11 @@ def schedule(db: Session, user: User, collection_id: uuid.UUID, method: Collecti
         raise AppError(422, "OUTSIDE_PICKUP_WINDOW",
                        "The pickup time must be between the start of the pickup window and the collection deadline.",
                        {"field": "scheduled_pickup_at"})
-    if method is not None:
+    if method is not None and method != collection.method:
+        if method == CollectionMethod.VOLUNTEER:
+            assignment_service.create_open(db, collection, user.id)
+        else:
+            assignment_service.cancel_active(db, collection.id, user.id, "switched to self pickup")
         collection.method = method
     if scheduled_pickup_at is not None:
         collection.scheduled_pickup_at = scheduled_pickup_at
@@ -137,11 +144,9 @@ def schedule(db: Session, user: User, collection_id: uuid.UUID, method: Collecti
     return collection
 
 
-def handover(db: Session, user: User, collection_id: uuid.UUID, quantity: Decimal, notes: str | None,
-             client: ClientInfo) -> Collection:
-    collection = _involved_for_update(db, user, collection_id)
-    if not (_is_provider(user, collection) or user.role == UserRole.ADMIN):
-        raise AppError(403, "FORBIDDEN", "Only the provider confirms the handover.")
+def perform_handover(db: Session, collection: Collection, user: User, quantity: Decimal, notes: str | None) -> None:
+    """The handover rules, shared by the provider and by a volunteer collecting the food.
+    No permission check and no commit here: the callers do both."""
     check_collection_transition(collection.status, CollectionStatus.HANDED_OVER)
     collection.handed_over_quantity = _quantity(Decimal(quantity), collection, "quantity",
                                                 collection.approved_quantity, "the approved quantity")
@@ -151,6 +156,15 @@ def handover(db: Session, user: User, collection_id: uuid.UUID, quantity: Decima
     collection.notes = notes
     collection.version += 1
     collection.allocation.status = AllocationStatus.COLLECTED
+
+
+def handover(db: Session, user: User, collection_id: uuid.UUID, quantity: Decimal, notes: str | None,
+             client: ClientInfo) -> Collection:
+    collection = _involved_for_update(db, user, collection_id)
+    if not (_is_provider(user, collection) or user.role == UserRole.ADMIN):
+        raise AppError(403, "FORBIDDEN", "Only the provider confirms the handover.")
+    perform_handover(db, collection, user, quantity, notes)
+    assignment_service.on_provider_handover(db, collection.id, user.id)
     if user.role == UserRole.ADMIN:
         record(db, actor=user, action="collection.handover", entity_type="collection", entity_id=collection.id,
                client=client, after={"handed_over_quantity": str(quantity)})
@@ -185,6 +199,7 @@ def receipt(db: Session, user: User, collection_id: uuid.UUID, quantity: Decimal
     from app.services.matching_service import record_outcome  # circular-import safe here
 
     record_outcome(db, collection.listing.id, collection.receiver.id, MatchOutcome.COMPLETED)
+    assignment_service.on_receipt(db, collection.id, user.id)
     if is_admin:
         record(db, actor=user, action="collection.receipt", entity_type="collection", entity_id=collection.id,
                client=client, reason=reason, after={"received_quantity": str(quantity)})
@@ -194,7 +209,16 @@ def receipt(db: Session, user: User, collection_id: uuid.UUID, quantity: Decimal
 
 
 def fail(db: Session, user: User, collection_id: uuid.UUID, reason: str, client: ClientInfo) -> Collection:
-    collection = _involved_for_update(db, user, collection_id)
+    _involved_for_update(db, user, collection_id)  # permission check + lock
+    collection = perform_failure(db, collection_id, user, reason, client)
+    db.commit()
+    db.refresh(collection)
+    return collection
+
+
+def perform_failure(db: Session, collection_id: uuid.UUID, user: User, reason: str, client: ClientInfo) -> Collection:
+    """The failure rules, shared by the provider/receiver and by a volunteer. The caller commits."""
+    collection = db.scalar(select(Collection).where(Collection.id == collection_id).with_for_update(of=Collection))
     before = collection.status
     check_collection_transition(before, CollectionStatus.FAILED)
     listing = db.scalar(select(FoodListing).where(FoodListing.id == collection.listing.id)
@@ -207,10 +231,9 @@ def fail(db: Session, user: User, collection_id: uuid.UUID, reason: str, client:
         _return_to_listing(db, listing, collection.approved_quantity, user, "a collection failed before handover")
     request = db.get(FoodRequest, collection.request_id)
     _request_history(db, request, RequestStatus.CANCELLED, user, f"collection failed: {reason}")
+    assignment_service.on_collection_failed(db, collection.id, user.id, reason)
     record(db, actor=user, action="collection.fail", entity_type="collection", entity_id=collection.id,
            client=client, reason=reason, before={"status": before.value}, after={"status": "failed"})
-    db.commit()
-    db.refresh(collection)
     return collection
 
 
@@ -223,6 +246,7 @@ def cancel_with_allocation(db: Session, allocation: Allocation) -> None:
     if collection.status != CollectionStatus.SCHEDULED:
         raise AppError(409, "ALLOCATION_NOT_CANCELLABLE",
                        "The food was already handed over; report a failed collection instead.")
+    assignment_service.cancel_active(db, collection.id, None, "allocation cancelled")
     collection.status = CollectionStatus.CANCELLED
     collection.version += 1
 

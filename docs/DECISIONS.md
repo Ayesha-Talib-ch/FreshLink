@@ -106,6 +106,16 @@ This file records decisions taken during development and any questions that are 
 | D86 | 2026-11-14 | An allocation can only be cancelled before the handover; afterwards, report a failed collection | The food has physically left the provider |
 | D87 | 2026-11-14 | A general "report a problem" (issue reports, plan 4.8) is deferred to the admin stage; collection problems use "fail" with a reason | Issues need the admin review screens |
 
+| D88 | 2026-11-14 | A collection with method "volunteer" gets an OPEN delivery task automatically (on allocation, or when the method is switched); switching back to self pickup cancels it | Spec 5.6 "provider or receiver requests collection support" |
+| D89 | 2026-11-14 | At most one active task per collection (partial unique index); pickup and drop-off points are snapshots | Plan 3.3; a profile edit can't move a delivery already on its way |
+| D90 | 2026-11-14 | Volunteers claim open tasks inside their service radius (claim = accept), or accept/decline tasks an admin assigned; a decline needs a reason and re-opens the task | Spec 4.3.3 "accept / reject an assignment" |
+| D91 | 2026-11-14 | Delivery steps follow a state machine: accepted → en route to pickup → collected → en route to receiver → delivered → completed (by the receiver's receipt); "failed" needs a reason | Spec 4.3.4 status list |
+| D92 | 2026-11-14 | The volunteer's "collected" step IS the collection handover (same rules, shared code); the provider confirming a handover moves the task to collected too | One source of truth for the handed-over quantity |
+| D93 | 2026-11-14 | Before accepting, volunteers see the pickup point and distances only; the receiver's address and both phone numbers appear after accepting and disappear 7 days after completion | Plan 5.3 field-level privacy |
+| D94 | 2026-11-14 | Suggested volunteers: heuristic (plan 7.6), score = 0.35 distance + 0.25 availability (weekly slot at the pickup time, in Pakistan time UTC+5) + 0.15 vehicle (matters for loads > 20) + 0.15 workload + 0.10 reliability (0.8 for newcomers); outside the service radius = excluded with a reason | Explainable; admins decide |
+| D95 | 2026-11-14 | Admins can assign, reassign (only before the pickup starts: the old task is cancelled and a new one created) or cancel (the collection becomes a self pickup); all audited | Spec 4.4.8 "assign volunteers, change assignments" |
+| D96 | 2026-11-14 | No live GPS tracking of volunteers | Plan 1.5 out of scope: status updates only |
+
 ## Known evaluation item
 
 - With the default weights, a receiver 33 km away **with a van and enough capacity** scored above one 5.9 km away without transport (0.68 vs 0.58), because exp(-km/5) falls steeply. Behaving as designed, but possibly not what people expect. Check against the hand-labelled evaluation set (plan 7.4) in the AI stage and tune the weights / distance curve there.

@@ -1,9 +1,9 @@
-# FreshLink — Manual Testing Guide (Stages 0–6a)
+# FreshLink — Manual Testing Guide (Stages 0–6b)
 
-This guide tests **every API built so far (75 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (86 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
-- **Time needed:** about 150 minutes
+- **Time needed:** about 165 minutes
 - **You need:** any small real PDF, JPG or PNG file on your computer (for section 10.4)
 - **Tick each box** as you go. If a result differs, copy the response and send it to the team.
 - All test accounts use emails starting with `guide.` so they're easy to delete afterwards (section 11).
@@ -568,13 +568,41 @@ Continue with the listing L4 from 10.9, where the NGO and the kitchen have appro
 | ☐ | NGO: `GET /api/v1/requests/{request_id}` (its request) | `completed`; the history ends with *received 14 packages* |
 | ☐ | Kitchen: `POST /api/v1/collections/{collection_id}/fail` (its collection) with `{"reason": "Our van broke down"}` | **200** `failed`; the listing's `remaining_quantity` grows again (the food never left the provider) |
 
+
+### 10.12 Volunteer delivery (Stage 6b)
+
+**Set up.** The volunteer from section 7 lives in Johar Town, about **10.1 km** from the bakery, but its service area is only 8 km.
+So first, as the volunteer, widen it: `PUT /api/v1/volunteers/me` with the section 7 body but `"service_radius_km": 15`.
+(Try `GET /api/v1/assignments/open` before and after: with 8 km you'll see no task, which is the service-area rule working.) As the provider, create a listing
+"Rice" (Cooked meals, `kg`, 10, preparation 1 h ago, pickup window 1 h to 5 h from now). As the NGO, request **5 kg with
+`"collection_preference": "needs_volunteer"`**. As the provider, approve it (`POST /api/v1/requests/{request_id}/approve`).
+A delivery task opens automatically. Log in as the volunteer (password `New-Fresh-2026` since section 9).
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Volunteer: `GET /api/v1/assignments/open` | the task, with `distance_km`; `dropoff_address`, `provider_contact` and `receiver_contact` are **null** (private until accepted). 📋 copy its `id` as **T1** |
+| ☐ | Admin: `GET /api/v1/assignments/{task_id}/suggested-volunteers` (T1) | the volunteer, with a score and reasons such as *"…km from the pickup · has a motorbike · no other tasks"* |
+| ☐ | Volunteer: `POST /api/v1/assignments/{task_id}/claim` (T1) | **200** `accepted`; now `dropoff_address` and both phone numbers are shown |
+| ☐ | Volunteer: `POST .../status` with `{"status": "delivered"}` | **409** `INVALID_STATUS_TRANSITION` (must collect first) |
+| ☐ | Volunteer: `{"status": "en_route_pickup"}` | **200** |
+| ☐ | Volunteer: `{"status": "collected"}` | **422** `QUANTITY_REQUIRED` |
+| ☐ | Volunteer: `{"status": "collected", "quantity": 5, "note": "in a pot"}` | **200** `collected`; the collection is now `handed_over` |
+| ☐ | Volunteer: `{"status": "en_route_dropoff"}`, then `{"status": "delivered"}` | **200** each |
+| ☐ | NGO: `POST /api/v1/collections/{collection_id}/receipt` with `{"quantity": 5}` | **200**; the task becomes `completed` |
+| ☐ | Volunteer: `GET /api/v1/assignments/{task_id}/history` | open → accepted → en_route_pickup → collected → en_route_dropoff → delivered → completed |
+
+**Optional: decline and reassign.** Create another needs-volunteer request and approve it. As admin, `POST /api/v1/assignments/{task_id}/assign`
+with the volunteer's profile `id` (from suggested-volunteers). As the volunteer, `POST .../decline` with
+`{"reason": "Exam tomorrow, sorry"}`: the task is `declined` and a new `open` task appears.
+
 ---
 
 ## 11. Clean up the test accounts
 
-This deletes only the `guide.` accounts. Collections, allocations, suggestions, requests and then listings must be deleted first (the database protects history: a receiver with requests, or a provider with listings, can't simply be deleted); profiles, sessions and listing history then go automatically (ON DELETE CASCADE).
+This deletes only the `guide.` accounts. Volunteer tasks, collections, allocations, suggestions, requests and then listings must be deleted first (the database protects history: a receiver with requests, or a provider with listings, can't simply be deleted); profiles, sessions and listing history then go automatically (ON DELETE CASCADE).
 
 ```powershell
+docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM volunteer_assignments WHERE collection_id IN (SELECT c.id FROM collections c JOIN allocations a ON a.id = c.allocation_id JOIN receiver_profiles r ON r.id = a.receiver_id JOIN users u ON u.id = r.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM collections WHERE allocation_id IN (SELECT a.id FROM allocations a JOIN receiver_profiles r ON r.id = a.receiver_id JOIN users u ON u.id = r.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM allocations WHERE receiver_id IN (SELECT r.id FROM receiver_profiles r JOIN users u ON u.id = r.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM allocation_runs WHERE listing_id IN (SELECT l.id FROM food_listings l JOIN provider_profiles p ON p.id = l.provider_id JOIN users u ON u.id = p.user_id WHERE u.email LIKE 'guide.%');"

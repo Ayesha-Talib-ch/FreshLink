@@ -23,7 +23,8 @@ Development started. Each stage is added and tested one at a time.
 | 5a. Allocation: explainable suggestions (priority-weighted / proportional-fair / first-come) with reproducible snapshots, confirm with overrides + reasons in one locked transaction, approve shortcut, cancel; spec example gives 15 / 10 / 5 | Done |
 | 5b. Matching v1 (explainable heuristic): ranked receivers with score parts and reasons, explained exclusions, "Recommended for you", match scores on incoming requests, stored snapshots with outcomes | Done |
 | 6a. Collections: created on allocation, schedule (method/time), provider handover, receiver receipt (completes the redistribution), failure with food returned, contacts shared within the transaction | Done |
-| 6b. Volunteer assignments: open tasks, claim / accept / decline, delivery status steps, admin assign with suggested volunteers | Next |
+| 6b. Volunteer assignments: open tasks near the volunteer, claim / assign / accept / decline, step-by-step delivery (collected = handover), receipt completes the task, failures with reasons, admin suggestions / reassign / cancel, contacts only after accepting | Done |
+| 7. Notifications (in-app), then dashboards and the admin stage | Next |
 
 There's no website or mobile UI yet.
 

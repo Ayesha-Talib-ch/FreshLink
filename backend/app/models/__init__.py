@@ -5,6 +5,7 @@ Every model module must be imported here so Alembic can "see" all tables.
 
 from app.db.base import Base
 from app.models.allocation import Allocation, AllocationRun, AllocationRunLine
+from app.models.assignment import AssignmentStatusHistory, VolunteerAssignment
 from app.models.audit import AuditLog
 from app.models.collection import Collection
 from app.models.category import FoodCategory, ProviderCategory, ReceiverCategory, UrgencyRuleRow
@@ -31,6 +32,7 @@ __all__ = [
     "Allocation",
     "AllocationRun",
     "AllocationRunLine",
+    "AssignmentStatusHistory",
     "AuditLog",
     "Base",
     "Collection",
@@ -52,6 +54,7 @@ __all__ = [
     "VerificationDocument",
     "VerificationRequest",
     "VerificationRequirement",
+    "VolunteerAssignment",
     "VolunteerAvailability",
     "VolunteerProfile",
 ]

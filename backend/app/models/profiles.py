@@ -148,6 +148,7 @@ class VolunteerProfile(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     service_radius_km: Mapped[Decimal] = mapped_column(Numeric(5, 1), server_default=text("5"))
     is_available_now: Mapped[bool] = mapped_column(Boolean, server_default=false())
 
+    user: Mapped["User"] = relationship(lazy="select")  # noqa: F821  (name, phone)
     availability: Mapped[list["VolunteerAvailability"]] = relationship(
         cascade="all, delete-orphan", lazy="selectin",
         order_by="(VolunteerAvailability.day_of_week, VolunteerAvailability.start_time)",

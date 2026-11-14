@@ -184,3 +184,24 @@ class CollectionStatus(StrEnum):
     RECEIVED = "received"  # the receiver confirmed receipt: redistribution complete
     FAILED = "failed"  # it didn't happen (with a reason)
     CANCELLED = "cancelled"  # the allocation was cancelled
+
+
+class AssignmentStatus(StrEnum):
+    OPEN = "open"  # waiting for a volunteer to claim it
+    ASSIGNED = "assigned"  # an administrator picked a volunteer; waiting for them to accept
+    ACCEPTED = "accepted"
+    DECLINED = "declined"  # the assigned volunteer said no (a new open task is created)
+    EN_ROUTE_PICKUP = "en_route_pickup"
+    COLLECTED = "collected"  # the volunteer has the food
+    EN_ROUTE_DROPOFF = "en_route_dropoff"
+    DELIVERED = "delivered"  # waiting for the receiver to confirm receipt
+    COMPLETED = "completed"  # the receiver confirmed
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+# Assignments that still "hold" the collection: at most one of these per collection.
+ACTIVE_ASSIGNMENT_STATUSES = (
+    AssignmentStatus.OPEN, AssignmentStatus.ASSIGNED, AssignmentStatus.ACCEPTED, AssignmentStatus.EN_ROUTE_PICKUP,
+    AssignmentStatus.COLLECTED, AssignmentStatus.EN_ROUTE_DROPOFF, AssignmentStatus.DELIVERED,
+)

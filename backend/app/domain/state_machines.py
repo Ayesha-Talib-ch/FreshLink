@@ -5,6 +5,7 @@ Later stages add requests, allocations, collections and assignments here.
 """
 
 from app.core.errors import AppError
+from app.domain.enums import AssignmentStatus as A
 from app.domain.enums import CollectionStatus as C
 from app.domain.enums import ListingStatus as L
 from app.domain.enums import RequestStatus as R
@@ -69,5 +70,35 @@ def check_collection_transition(current: C, target: C) -> None:
         raise AppError(
             409, "INVALID_STATUS_TRANSITION",
             f"A collection that is '{current.value}' can't be changed to '{target.value}'.",
+            {"current_status": current.value, "requested_status": target.value},
+        )
+
+
+# --------------------------------------------------------- volunteer assignments
+# The volunteer's own steps (spec 4.3.4): accepted -> on the way to pickup -> collected
+# -> on the way to the receiver -> delivered; "failed" from any of these with a reason.
+ASSIGNMENT_TRANSITIONS: dict[A, set[A]] = {
+    A.OPEN: {A.ACCEPTED, A.ASSIGNED, A.CANCELLED},  # claimed by a volunteer, or assigned by an admin
+    A.ASSIGNED: {A.ACCEPTED, A.DECLINED, A.CANCELLED},
+    A.ACCEPTED: {A.EN_ROUTE_PICKUP, A.COLLECTED, A.FAILED, A.CANCELLED},
+    A.EN_ROUTE_PICKUP: {A.COLLECTED, A.FAILED, A.CANCELLED},
+    A.COLLECTED: {A.EN_ROUTE_DROPOFF, A.DELIVERED, A.FAILED},
+    A.EN_ROUTE_DROPOFF: {A.DELIVERED, A.FAILED},
+    A.DELIVERED: {A.COMPLETED, A.FAILED},
+    A.DECLINED: set(),
+    A.COMPLETED: set(),
+    A.FAILED: set(),
+    A.CANCELLED: set(),
+}
+
+# Steps a volunteer may report through POST /assignments/{id}/status.
+VOLUNTEER_STEPS = {A.EN_ROUTE_PICKUP, A.COLLECTED, A.EN_ROUTE_DROPOFF, A.DELIVERED, A.FAILED}
+
+
+def check_assignment_transition(current: A, target: A) -> None:
+    if target not in ASSIGNMENT_TRANSITIONS.get(current, set()):
+        raise AppError(
+            409, "INVALID_STATUS_TRANSITION",
+            f"A task that is '{current.value}' can't be changed to '{target.value}'.",
             {"current_status": current.value, "requested_status": target.value},
         )
