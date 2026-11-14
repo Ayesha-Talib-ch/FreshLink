@@ -1,6 +1,6 @@
 # FreshLink — Manual Testing Guide (Stages 0–6b)
 
-This guide tests **every API built so far (116 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (125 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
 - **Time needed:** about 165 minutes
@@ -659,6 +659,23 @@ Everything you did above has already left notifications behind. No new set-up is
 | ☐ | Admin: `POST .../close` (the samosa listing) with `{"reason": "Provider asked us by phone"}` | **200** `closed`; R9 becomes `expired` |
 | ☐ | Admin: `GET /api/v1/admin/volunteers` | the volunteer with `completed_deliveries` and `completion_rate` (1.0 after section 10.12) |
 | ☐ | Admin: `GET /api/v1/admin/allocation-runs` | runs with `suggested_total`, `approved_total` and `overrides` |
+
+
+### 10.16 Reports, exports, fairness and the audit log (Stage 8c)
+
+Everything you did in this guide is now report data. Log in as the admin.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `GET /api/v1/admin/reports/summary` | `quantity_listed`, `quantity_allocated`, `quantity_collected`, `quantity_distributed` as **separate** lists per unit (e.g. kg and package apart) |
+| ☐ | Same with `date_to` = a date last year | all counts **0** |
+| ☐ | `GET /api/v1/admin/reports/timeseries?interval=week` | one row per week (Mondays), empty weeks included |
+| ☐ | `GET /api/v1/admin/reports/categories`, then `/providers`, `/receivers`, `/volunteers` | rows for the guide's food categories, the bakery, the NGO / kitchen, the volunteer |
+| ☐ | `GET /api/v1/admin/fairness` | `average_fill_ratio` per receiver category, `inequality_by_unit` with a `gini` between 0 and 1, `override_rate` |
+| ☐ | `GET /api/v1/admin/reports/export?report=summary&format=csv` | Swagger shows **Download file**; it opens in Excel with "12.5 kg; 30 packages"-style values |
+| ☐ | Same with `format=pdf` | a PDF titled "FreshLink - Summary" with the filters and a table |
+| ☐ | `GET /api/v1/admin/audit-logs?action=report.` | your two exports (`report.export`), newest first |
+| ☐ | As the provider: `GET /api/v1/admin/reports/summary` | **403** |
 
 
 ---

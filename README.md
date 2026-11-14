@@ -27,7 +27,8 @@ Development started. Each stage is added and tested one at a time.
 | 7. In-app notifications: list / unread count / mark read, links to the related record, sent inside the same transaction as each event (requests, decisions, allocations, collections, delivery tasks, verification, urgency, top-5 new-listing matches, admin alerts); admin announcements (everyone / one role / chosen users) and category switches | Done |
 | 8a. Dashboards for all four roles (`/me/dashboard`), the admin dashboard (the spec's 15 metrics, quantities per unit) and activity feed; admin user management: search / filter / view, activate / deactivate / suspend with reasons (sessions end at once, a suspended provider's food is hidden), account history, super admins create admins | Done |
 | 8b. Admin listings monitor with date warnings; listing moderation (suspend / reinstate / close / remove, with reasons); volunteer overview (load, completion rate); allocation-run monitor (suggested vs approved, overrides); problem reports for every role, reviewed and resolved by admins | Done |
-| 8c. Reports and exports, fairness, platform settings, category management, audit-log viewer | Next |
+| 8c. Reports (summary, weekly / monthly trends, categories, providers, receivers, volunteers) with the spec's filters; CSV and PDF export; fairness report (fill ratio per receiver category, Gini per unit, override rate); audit-log viewer | Done |
+| 8d. System management: food / provider / receiver categories, verification requirements, platform settings | Next |
 
 There's no website or mobile UI yet.
 

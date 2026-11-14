@@ -136,6 +136,14 @@ This file records decisions taken during development and any questions that are 
 | D114 | 2026-11-14 | Volunteer completion rate = completed / (completed + failed); shown as empty until the first finished delivery | No misleading 0 % for newcomers |
 | D115 | 2026-11-14 | Problem reports: only people involved in a listing, request, collection or delivery task can report on it (others get 404); one open report per person per item; admins get an alert; resolving needs a note that is sent to the reporter; a report can be re-opened unless a newer one is open | Spec 4.2.5 / 4.3.3 / 4.4.8; privacy |
 | D116 | 2026-11-14 | A "food condition" report is passed to an administrator; FreshLink never judges whether food is safe | Plan 1.3 |
+| D117 | 2026-11-14 | Stage 8 split further: 8c = reports, exports, fairness, audit viewer; 8d = categories, verification requirements and platform settings | Settings change behaviour in earlier stages and deserve their own stage |
+| D118 | 2026-11-14 | Reports keep listed, allocated, collected (handed over) and distributed (received) apart, per unit; "not redistributed" = what was left on expired or closed listings | Spec 14.3 and plan 3.5 |
+| D119 | 2026-11-14 | A report's date range applies to each event's own date (listing created, request made, allocation confirmed, food handed over, food received); days are Pakistan time (UTC+5) and date_to is included | Matches how people read "in May" |
+| D120 | 2026-11-14 | Removed listings are left out of reports unless the filter asks for them | They were never real food on offer |
+| D121 | 2026-11-14 | Trend reports include empty weeks or months (weeks start on Monday) | Charts need a continuous time axis |
+| D122 | 2026-11-14 | Fairness: average fill ratio per receiver category (unit-free: 0 = rejected, 1 = in full), Gini of received quantity per unit across everyone who requested (0 = equal), and the override rate. Shown as information, never as a judgement of a receiver | Plan 4.12 / 7.5 |
+| D123 | 2026-11-14 | Exports: CSV (UTF-8 with BOM so Excel shows Urdu correctly) and PDF via fpdf2 (pure Python, LGPL). The PDF's built-in fonts are Latin-1, so non-Latin letters are replaced there; the CSV keeps them. Every export is audited | Spec 14.3 "CSV or PDF" |
+| D124 | 2026-11-14 | Audit-log viewer: filter by actor email, exact action or a prefix ending in "." (e.g. `listing.`), entity, and dates; read-only (the table itself is append-only) | Spec "all important administrative actions should be recorded" |
 
 ## Known evaluation item
 
@@ -153,6 +161,7 @@ All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 l
 - Uploaded files of deleted users stay on disk (their database rows are deleted). A clean-up job and a document-retention setting (plan issue M7) belong to the worker/admin stages.
 - The worker process (plan section 2.1) must run the urgency scan every 5 minutes; until then run `python -m app.cli urgency-scan` by hand (or with Windows Task Scheduler for demos).
 - When a volunteer is suspended, tasks they already accepted stay with them; the admin reassigns or cancels them (Stage 6b endpoints). An automatic hand-back can come with the admin monitoring screens (8b).
+- PDF exports use Latin-1 fonts. If Urdu names must appear in PDFs, bundle a Unicode font (e.g. Noto Naskh Arabic) in the deployment stage.
 - Behind a hosting proxy, the client IP for rate limiting must come from `X-Forwarded-For` (`uvicorn --proxy-headers`). Configure this at deployment.
 
 ## Open (need the team's or supervisor's answer)
