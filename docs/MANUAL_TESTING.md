@@ -1,9 +1,9 @@
-# FreshLink — Manual Testing Guide (Stages 0–2b)
+# FreshLink — Manual Testing Guide (Stages 0–3a)
 
-This guide tests **every API built so far (36 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (45 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
-- **Time needed:** about 60 minutes
+- **Time needed:** about 75 minutes
 - **You need:** any small real PDF, JPG or PNG file on your computer (for section 10.4)
 - **Tick each box** as you go. If a result differs, copy the response and send it to the team.
 - All test accounts use emails starting with `guide.` so they're easy to delete afterwards (section 11).
@@ -361,13 +361,60 @@ docker exec freshlink-db psql -U freshlink -d freshlink -c "SELECT action, actor
 ☐ Four rows: `verification.request_info`, `verification.approve`, and two `receiver.eligibility`, each with the admin's email.
 ☐ Try to tamper with it: `docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM audit_logs;"` → **ERROR: audit_logs is append-only**.
 
+
+### 10.5 Food listings (Stage 3a)
+
+Log in as the provider (`0300-1110001` / `Fresh-Link-2026`, `"platform": "mobile"`), who was approved in 10.4, and **Authorize**.
+You also need the food category ids from section 2 (**Bakery items** and **Cooked meals**).
+
+⏰ **About times:** every time must include `+05:00` (Pakistan time). Use times from **today**, a little after the current time.
+Example: if it's now 15 Nov, 14:00 → `"pickup_window_start": "2026-11-15T15:00:00+05:00"`, `"pickup_window_end": "2026-11-15T18:00:00+05:00"`, and a preparation time of `"2026-11-15T13:00:00+05:00"`.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `POST /api/v1/listings` with the body below, but **without** the `preparation_at` line | **422** `PREPARATION_TIME_REQUIRED` (cooked meals need it) |
+| ☐ | Same, with `"preparation_at"` set 2 hours in the **future** | **422** `DATE_IN_FUTURE` |
+| ☐ | Same, with `"pickup_window_start": "2026-11-15T15:00:00"` (no `+05:00`) | **422**, *should have timezone info* |
+| ☐ | Same, with `"declaration_accepted": false` | **422**, *Please confirm the declaration…* |
+| ☐ | The body below, unchanged | **201**: `status` active, `version` 1, `remaining_quantity` 12.5, `pickup_address` is the business address. 📋 copy the `id` as **L1** |
+| ☐ | `GET /api/v1/listings/{listing_id}` with L1 | **200**; the provider card shows only the business name (no phone) |
+| ☐ | `GET /api/v1/providers/me/listings` | **200**, `total` 1 |
+| ☐ | `PUT /api/v1/listings/{listing_id}` with the same body but `"total_quantity": 15`, **If-Match empty** | **428** `VERSION_REQUIRED` |
+| ☐ | Same with **If-Match** = `1` | **200**, `version` 2, `total_quantity` 15 |
+| ☐ | Same again with **If-Match** = `1` (an old version, like a second device) | **409** `STALE_VERSION`, `current_version` 2 |
+| ☐ | `POST /api/v1/listings/{listing_id}/pause` with `{"reason": "Running late"}` | **200** `paused` |
+| ☐ | As a **verified receiver** you'd now get 404 for this listing (paused = hidden). Optional check with the receiver token. | **404** |
+| ☐ | `POST .../resume` | **200** `active` |
+| ☐ | `POST .../close` | **200** `closed` |
+| ☐ | `POST .../resume` again | **409** `INVALID_STATUS_TRANSITION` (closed is final) |
+| ☐ | `GET /api/v1/listings/{listing_id}/history` | 4 rows: created → paused (Running late) → active → closed |
+| ☐ | Create a second listing (body below), then `DELETE /api/v1/listings/{listing_id}` on it | **204**, then GET it → **404** |
+| ☐ | **Food photo:** `POST /api/v1/files` with a JPG/PNG and `purpose` = `listing_image` → put its `id` in `"image_file_id"` when creating a listing | **201**, the listing shows `image` |
+
+```json
+{
+  "food_category_id": "PASTE-COOKED-MEALS-ID",
+  "food_name": "Chicken biryani",
+  "unit": "kg",
+  "total_quantity": 12.5,
+  "preparation_at": "2026-11-15T13:00:00+05:00",
+  "pickup_window_start": "2026-11-15T15:00:00+05:00",
+  "pickup_window_end": "2026-11-15T18:00:00+05:00",
+  "storage_info": "Keep covered",
+  "declaration_accepted": true
+}
+```
+
+💡 The response shows times in UTC (`...Z`), e.g. 18:00+05:00 appears as 13:00Z. It's the same moment; the apps will display Pakistan time.
+
 ---
 
 ## 11. Clean up the test accounts
 
-This deletes only the `guide.` accounts. Their profiles and sessions are deleted with them automatically (ON DELETE CASCADE).
+This deletes only the `guide.` accounts. Listings must be deleted first (a provider with listings can't be deleted, which protects history); profiles, sessions and listing history then go automatically (ON DELETE CASCADE).
 
 ```powershell
+docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM food_listings WHERE provider_id IN (SELECT p.id FROM provider_profiles p JOIN users u ON u.id = p.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM users WHERE email LIKE 'guide.%';"
 ```
 ☐ Output `DELETE 4`
@@ -385,7 +432,7 @@ cd D:\University\FreshLink\backend
 .\.venv\Scripts\Activate.ps1
 pytest
 ```
-☐ `266 passed`. Docker must be running. The tests use a separate `freshlink_test` database, so your data is never touched.
+☐ `306 passed`. Docker must be running. The tests use a separate `freshlink_test` database, so your data is never touched.
 
 ---
 

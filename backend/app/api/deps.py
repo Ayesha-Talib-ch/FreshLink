@@ -122,6 +122,15 @@ def require_super_admin(user: CurrentUser) -> User:
 
 
 VerifiedUser = Annotated[User, Depends(require_verified)]
+
+
+def require_verified_provider(user: Annotated[User, Depends(require_roles(UserRole.PROVIDER))]) -> User:
+    """A provider whose account an administrator has approved."""
+    return require_verified(user)
+
+
+VerifiedProvider = Annotated[User, Depends(require_verified_provider)]
+ProviderUser = Annotated[User, Depends(require_roles(UserRole.PROVIDER))]
 AdminUser = Annotated[User, Depends(require_roles(UserRole.ADMIN))]
 SuperAdminUser = Annotated[User, Depends(require_super_admin)]
 

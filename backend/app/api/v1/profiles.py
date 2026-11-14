@@ -10,7 +10,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import CurrentUser, DbSession, require_roles
+from app.api.deps import CurrentUser, DbSession, ProviderUser, require_roles
 from app.core.errors import error_responses
 from app.domain.enums import UserRole
 from app.models.profiles import ProviderProfile, ReceiverProfile, VolunteerProfile
@@ -33,7 +33,6 @@ from app.services import profile_service as svc
 
 router = APIRouter(tags=["profiles"])
 
-ProviderUser = Annotated[User, Depends(require_roles(UserRole.PROVIDER))]
 ReceiverUser = Annotated[User, Depends(require_roles(UserRole.RECEIVER))]
 VolunteerUser = Annotated[User, Depends(require_roles(UserRole.VOLUNTEER))]
 

@@ -16,7 +16,8 @@ Development started. Each stage is added and tested one at a time.
 | 1b. Refresh tokens (rotation + reuse detection), logout, logout-all, change password, login rate limiting | Done |
 | 2a. Categories (seeded), public lookups, provider/receiver/volunteer profiles, receiver food preferences (capacity), volunteer availability, account update | Done |
 | 2b. Private document upload, verification submit/status, admin queue with approve / reject / request info, receiver eligibility, append-only audit log | Done |
-| 3. Food listings (Provider) | Next |
+| 3a. Food listings: create / view / edit (optimistic locking) / pause / resume / close / remove, category date rules, food photos, status history | Done |
+| 3b. Urgency engine (normal / medium / high / critical) and automatic expiry | Next |
 
 There's no website or mobile UI yet.
 

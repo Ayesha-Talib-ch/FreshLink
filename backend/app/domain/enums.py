@@ -94,3 +94,20 @@ class VerificationRequestStatus(StrEnum):
     APPROVED = "approved"
     REJECTED = "rejected"
     INFO_REQUESTED = "info_requested"
+
+
+class ListingStatus(StrEnum):
+    ACTIVE = "active"  # visible to receivers, can be requested
+    PAUSED = "paused"  # temporarily hidden by the provider
+    FULLY_ALLOCATED = "fully_allocated"  # nothing left (set by the allocation stage)
+    CLOSED = "closed"  # ended by the provider
+    EXPIRED = "expired"  # collection deadline passed (set by the urgency/expiry job)
+    SUSPENDED = "suspended"  # hidden by an administrator
+    REMOVED = "removed"  # deleted by the provider or an administrator (kept for history)
+
+
+class DistributionType(StrEnum):
+    """Spec 4.1: 'free donation or another administrator-approved arrangement'.
+    Only free donation is enabled in v1 (Technical Plan issue M5)."""
+
+    FREE_DONATION = "free_donation"

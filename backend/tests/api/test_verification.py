@@ -117,7 +117,8 @@ def test_upload_limit_per_user(test_settings: Settings, make_user: MakeUser) -> 
 
 
 @pytest.mark.parametrize(("purpose", "status", "code"),
-                         [("listing_image", 422, "PURPOSE_NOT_AVAILABLE"), ("selfie", 422, "VALIDATION_ERROR")])
+                         [("listing_image", 415, "UNSUPPORTED_FILE_TYPE"),  # a PDF is not a food photo
+                          ("selfie", 422, "VALIDATION_ERROR")])
 def test_upload_purpose_rules(client: TestClient, provider: tuple, purpose: str, status: int, code: str) -> None:
     response = _upload(client, provider[1], purpose=purpose)
     assert response.status_code == status and _code(response) == code

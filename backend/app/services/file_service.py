@@ -48,10 +48,9 @@ def save_upload(
     max_files: int,
 ) -> StoredFile:
     if user.role == UserRole.ADMIN:
-        raise AppError(403, "FORBIDDEN", "Administrators don't upload verification documents.")
-    if purpose != FilePurpose.VERIFICATION_DOC:
-        raise AppError(422, "PURPOSE_NOT_AVAILABLE", "This kind of upload is not available yet.",
-                       {"field": "purpose"})
+        raise AppError(403, "FORBIDDEN", "Administrators don't upload files.")
+    if purpose == FilePurpose.LISTING_IMAGE and user.role != UserRole.PROVIDER:
+        raise AppError(403, "FORBIDDEN", "Only food providers upload food photos.")
     if not data:
         raise AppError(422, "EMPTY_FILE", "The file is empty.", {"field": "file"})
     if len(data) > max_bytes:
@@ -60,6 +59,8 @@ def save_upload(
     mime = detect_mime_type(data)
     if mime is None:
         raise AppError(415, "UNSUPPORTED_FILE_TYPE", f"Please upload a {ALLOWED_DESCRIPTION} file.")
+    if purpose == FilePurpose.LISTING_IMAGE and not mime.startswith("image/"):
+        raise AppError(415, "UNSUPPORTED_FILE_TYPE", "Food photos must be JPG or PNG images.")
 
     count = db.scalar(select(func.count()).select_from(StoredFile).where(StoredFile.owner_user_id == user.id))
     if count >= max_files:
@@ -69,6 +70,8 @@ def save_upload(
     stored = StoredFile(
         owner_user_id=user.id, purpose=purpose, storage_key=key,
         original_name=_safe_name(original_name), mime_type=mime, size_bytes=len(data),
+        # Food photos appear on listings; verification documents never leave owner + admins.
+        is_private=purpose != FilePurpose.LISTING_IMAGE,
     )
     db.add(stored)
     try:
@@ -82,9 +85,13 @@ def save_upload(
 
 
 def get_readable_file(db: Session, user: User, file_id) -> StoredFile:  # noqa: ANN001
-    """Owner and administrators only. Anyone else gets 404 (not 403), so they
-    can't even learn that the file exists (Technical Plan section 5.3)."""
+    """Private files (verification documents): owner and administrators only. Anyone
+    else gets 404 (not 403), so they can't even learn that the file exists (plan 5.3).
+    Food photos (not private) can be seen by any logged-in user, like the listing itself."""
     stored = db.get(StoredFile, file_id)
-    if stored is None or (stored.owner_user_id != user.id and user.role != UserRole.ADMIN):
+    allowed = stored is not None and (
+        not stored.is_private or stored.owner_user_id == user.id or user.role == UserRole.ADMIN
+    )
+    if not allowed:
         raise AppError(404, "NOT_FOUND", "File not found.")
     return stored

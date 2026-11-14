@@ -44,6 +44,14 @@ This file records decisions taken during development and any questions that are 
 | D31 | 2026-11-14 | Audit log is append-only via a database trigger; `actor_id` has no foreign key | Even an application bug can't rewrite history; entries survive user deletion. In production the app's DB role should also lack TRUNCATE |
 | D32 | 2026-11-14 | Notifications for verification results are **not sent yet** | The notifications feature (plan Phase 2) will add "verification approved/rejected" messages; until then the user sees the result on the Verification screen |
 
+| D33 | 2026-11-14 | Stage 3 split into 3a (listings) and 3b (urgency engine + automatic expiry) | The urgency engine is its own module with many boundary tests |
+| D34 | 2026-11-14 | All listing times must include a time zone (`+05:00`); times without one are refused | A guessed zone would shift every deadline by up to 5 hours (plan issue M11) |
+| D35 | 2026-11-14 | Listing date rules: category flags decide required dates (cooked meals/fast food: preparation time; dairy/packaged: expiry date); preparation/packaging can't be in the future; expiry/best-before and the deadline can't have passed; deadline at most 30 days ahead and not after the expiry date | Spec 9.6 and plan 1.3. The 30-day limit catches typos such as the year 2099 |
+| D36 | 2026-11-14 | Editing uses optimistic locking: `If-Match: <version>` is **required**; a stale version gives 409 `STALE_VERSION` with the current version | Plan issue H5 / section 2.4; two devices can't silently overwrite each other |
+| D37 | 2026-11-14 | Removing a listing is a soft delete (status `removed`); it stays in the database for history and reports | Plan section 3.1 ("history is never hard-deleted") |
+| D38 | 2026-11-14 | Listing detail is visible to the owner, admins, and **verified** receivers while it's **active**; the public provider card shows only the business name | Spec 15: contact details only within an authorized transaction. Receiver browse/search comes in the receiver stage |
+| D39 | 2026-11-14 | Food photos (`listing_image`) are JPG/PNG only and readable by any logged-in user; verification documents stay private | A photo on a listing is public by nature |
+
 ## API review after Stage 2a (2026-11-14)
 
 All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 lines are trivial), 4 problems were fixed (message prefix, wrong 422 docs, missing CORS header on 500, Swagger cookie flow), and every fix has a test that was shown to fail without it.

@@ -73,6 +73,7 @@ _DESCRIPTIONS = {
     413: "File too large",
     415: "Unsupported file type (only PDF, JPG, PNG)",
     422: "Validation error: details.fields lists each problem",
+    428: "The If-Match header (the version you edited) is missing",
     429: "Too many attempts; see the Retry-After header",
     503: "Database temporarily unavailable",
 }
