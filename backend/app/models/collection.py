@@ -47,6 +47,8 @@ class Collection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     handed_over_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     received_quantity: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # set when the worker sent the 'pickup soon' reminder, so it is sent only once (Stage 9)
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     received_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     failure_reason: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)

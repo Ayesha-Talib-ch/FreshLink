@@ -10,6 +10,7 @@ from app.models.audit import AuditLog
 from app.models.collection import Collection
 from app.models.category import FoodCategory, ProviderCategory, ReceiverCategory, UrgencyRuleRow
 from app.models.issue import IssueReport
+from app.models.job import JobRun
 from app.models.listing import FoodListing, ListingStatusHistory
 from app.models.matching import MatchRecommendation
 from app.models.notification import Announcement, Notification, NotificationCategory
@@ -44,6 +45,7 @@ __all__ = [
     "FoodListing",
     "FoodRequest",
     "IssueReport",
+    "JobRun",
     "ListingStatusHistory",
     "MatchRecommendation",
     "Notification",

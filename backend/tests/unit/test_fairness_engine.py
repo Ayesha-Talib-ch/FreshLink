@@ -1,12 +1,17 @@
 """The fairness measures: hand-checked examples plus properties over thousands of random cases."""
 
+from decimal import Decimal
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
 from app.engines.fairness import fill_ratio, gini
 
-amounts = st.lists(st.floats(min_value=0, max_value=1e6, allow_nan=False), min_size=1, max_size=60)
+# Real quantities: stored as NUMERIC(10,2), so 0 or at least 0.01, at most 99 999 999.99.
+# (Plain floats would include values like 5e-324, which no listing can ever hold.)
+quantity = st.decimals(min_value=0, max_value=1_000_000, places=2, allow_nan=False, allow_infinity=False)
+amounts = st.lists(quantity, min_size=1, max_size=60)
 
 
 def test_hand_checked_examples() -> None:
@@ -22,14 +27,14 @@ def test_negative_amounts_are_refused() -> None:
 
 
 @given(amounts)
-def test_gini_is_between_zero_and_its_maximum(values: list[float]) -> None:
+def test_gini_is_between_zero_and_its_maximum(values: list[Decimal]) -> None:
     g = gini(values)
     if g is not None:
         assert 0 <= g <= 1 - 1 / len(values) + 1e-4
 
 
-@given(amounts, st.floats(min_value=0.01, max_value=1000))
-def test_gini_ignores_the_unit(values: list[float], factor: float) -> None:
+@given(amounts, st.decimals(min_value="0.01", max_value=1000, places=2))
+def test_gini_ignores_the_unit(values: list[Decimal], factor: Decimal) -> None:
     """Measuring in grams instead of kg doesn't change fairness."""
     g, scaled = gini(values), gini([v * factor for v in values])
     assert (g is None) == (scaled is None)
@@ -38,12 +43,12 @@ def test_gini_ignores_the_unit(values: list[float], factor: float) -> None:
 
 
 @given(amounts)
-def test_gini_ignores_the_order(values: list[float]) -> None:
+def test_gini_ignores_the_order(values: list[Decimal]) -> None:
     assert gini(values) == gini(list(reversed(values)))
 
 
-@given(st.integers(min_value=1, max_value=50), st.floats(min_value=0.1, max_value=1e4))
-def test_equal_shares_are_perfectly_fair(n: int, amount: float) -> None:
+@given(st.integers(min_value=1, max_value=50), quantity.filter(lambda q: q > 0))
+def test_equal_shares_are_perfectly_fair(n: int, amount: Decimal) -> None:
     assert gini([amount] * n) == 0.0
 
 
