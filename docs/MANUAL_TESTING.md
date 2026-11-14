@@ -1,9 +1,9 @@
-# FreshLink — Manual Testing Guide (Stages 0–5a)
+# FreshLink — Manual Testing Guide (Stages 0–5b)
 
-This guide tests **every API built so far (66 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (69 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
-- **Time needed:** about 130 minutes
+- **Time needed:** about 140 minutes
 - **You need:** any small real PDF, JPG or PNG file on your computer (for section 10.4)
 - **Tick each box** as you go. If a result differs, copy the response and send it to the team.
 - All test accounts use emails starting with `guide.` so they're easy to delete afterwards (section 11).
@@ -528,6 +528,27 @@ and clear its capacity (`PUT /api/v1/receivers/me/food-preferences` with `{"pref
 | ☐ | Family: `GET /api/v1/allocations` | one allocation of 3 packages of "Bread packages" |
 | ☐ | Provider: `POST /api/v1/allocations/{allocation_id}/cancel` (the family's allocation) with `{"reason": "Family can't come today"}` | **200** `cancelled`; the listing's `remaining_quantity` goes back to 5 |
 | ☐ | Admin: in PowerShell, `docker exec freshlink-db psql -U freshlink -d freshlink -c "SELECT action, reason FROM audit_logs ORDER BY created_at DESC LIMIT 2;"` | `allocation.cancel` and `allocation.confirm` (with the override reason) |
+
+
+### 10.10 Matching and "Recommended for you" (Stage 5b)
+
+Use the three receivers from 10.9. Give each a capacity for **Bakery items** (`PUT /api/v1/receivers/me/food-preferences`):
+NGO 20 packages, kitchen 10 packages, family 10 packages. As the provider, create a new Bakery items listing,
+"Fresh naan" (`package`, 30), pickup window ending in 30 h (📋 **L5**).
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Provider: `GET /api/v1/listings/{listing_id}/matches` (L5) | **200**. `model_version` `heuristic-v1`; each match has `rank`, `score` (0–1), the six `components` and `reasons` such as *"5.9 km away · accepts Bakery items · can take up to 20 packages"*. **No phone or address** in `receiver` |
+| ☐ | Look at `excluded` | receivers that don't qualify, each with a reason (for example the volunteer's account isn't a receiver, so it isn't listed at all; any receiver without Bakery items in its preferences shows *"Doesn't accept Bakery items…"*) |
+| ☐ | As the family: change its preferences to **Dairy products** only, then the provider repeats the call | the family moves to `excluded` with *"Doesn't accept Bakery items…"* |
+| ☐ | Put the family's Bakery items preference back | it's matched again |
+| ☐ | NGO: `GET /api/v1/listings/recommended` | **200**: "Fresh naan" with `match.score` and `match.reasons` |
+| ☐ | NGO: request L5 (quantity 10), then `GET /api/v1/listings/recommended` again | L5 is no longer recommended (already requested) |
+| ☐ | Kitchen: request L5 (quantity 5). Provider: `GET /api/v1/listings/{listing_id}/requests` (L5) with `sort` = `match` | both requests with a `match` score; the better match first |
+| ☐ | Provider: `POST /api/v1/listings/{listing_id}/matches/refresh` | **200**, `stored` = number of matches |
+| ☐ | In PowerShell: `docker exec freshlink-db psql -U freshlink -d freshlink -c "SELECT rank, score, outcome FROM match_recommendations ORDER BY generated_at DESC, rank LIMIT 5;"` | stored rows; the NGO's row has `outcome` **requested** |
+
+💡 Viva note: this is **not machine learning**. It's an explainable scoring formula (plan 7.4, v1). The stored outcomes are the data a learned version (v2) would be trained and evaluated on.
 
 ---
 

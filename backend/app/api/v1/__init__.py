@@ -13,6 +13,7 @@ from app.api.v1 import (
     files,
     listings,
     lookups,
+    matching,
     profiles,
     requests,
     system,
@@ -25,6 +26,8 @@ api_router.include_router(auth.router)
 api_router.include_router(lookups.router)
 api_router.include_router(profiles.router)
 api_router.include_router(files.router)
+# matching BEFORE listings: /listings/recommended must not be read as /listings/{listing_id}
+api_router.include_router(matching.router)
 api_router.include_router(listings.router)
 api_router.include_router(requests.router)
 api_router.include_router(allocations.router)

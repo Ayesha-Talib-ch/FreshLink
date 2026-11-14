@@ -163,3 +163,11 @@ class AllocationStatus(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+
+class MatchOutcome(StrEnum):
+    """What happened after a receiver was recommended (weak labels for the ML ranker, plan 7.1)."""
+
+    NONE = "none"
+    REQUESTED = "requested"  # the receiver requested this listing
+    COMPLETED = "completed"  # the food was received (collection stage)

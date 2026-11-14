@@ -8,6 +8,7 @@ from app.models.allocation import Allocation, AllocationRun, AllocationRunLine
 from app.models.audit import AuditLog
 from app.models.category import FoodCategory, ProviderCategory, ReceiverCategory, UrgencyRuleRow
 from app.models.listing import FoodListing, ListingStatusHistory
+from app.models.matching import MatchRecommendation
 from app.models.profiles import (
     ProviderProfile,
     ReceiverFoodPreference,
@@ -35,6 +36,7 @@ __all__ = [
     "FoodListing",
     "FoodRequest",
     "ListingStatusHistory",
+    "MatchRecommendation",
     "ProviderCategory",
     "ProviderProfile",
     "ReceiverCategory",

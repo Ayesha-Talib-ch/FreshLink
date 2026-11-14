@@ -21,6 +21,7 @@ from app.domain.enums import (
     ACTIVE_REQUEST_STATUSES,
     COUNTABLE_UNITS,
     ListingStatus,
+    MatchOutcome,
     RequestStatus,
     UserRole,
 )
@@ -128,6 +129,11 @@ def create(db: Session, user: User, body: RequestIn) -> FoodRequest:
         db.rollback()
         raise AppError(409, "DUPLICATE_REQUEST", "You already have an active request for this food.") from exc
     _history(db, request, None, RequestStatus.PENDING, user.id, "requested")
+    # Imported here: matching_service -> browse_service -> urgency_service -> request_service
+    # would otherwise be a circular import.
+    from app.services.matching_service import record_outcome
+
+    record_outcome(db, listing.id, profile.id, MatchOutcome.REQUESTED)
     db.commit()
     db.refresh(request)
     return _with_distance([request])[0]

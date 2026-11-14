@@ -132,6 +132,12 @@ class UrgencyOut(BaseModel):
     disclaimer: str  # always shown: this is not a food-safety assessment
 
 
+class ListingMatch(BaseModel):
+    score: float
+    reasons: list[str]
+    model_version: str
+
+
 class ListingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -164,6 +170,7 @@ class ListingOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     distance_km: float | None = None  # only in search results that have a location
+    match: ListingMatch | None = None  # only in "Recommended for you"
 
 
 class SearchLocation(BaseModel):

@@ -21,7 +21,8 @@ Development started. Each stage is added and tested one at a time.
 | 4a. Receiver browse / search: typo-tolerant name search, category, distance (Haversine) with saved location and pickup radius, quantity + unit, pickup time, urgency; 5 sort orders; only food that can still be collected | Done |
 | 4b. Food requests: create (eligibility, availability, quantity and capacity checks), role-scoped lists, edit / cancel, provider reject with reason, incoming requests per listing, requests expire when a listing ends | Done |
 | 5a. Allocation: explainable suggestions (priority-weighted / proportional-fair / first-come) with reproducible snapshots, confirm with overrides + reasons in one locked transaction, approve shortcut, cancel; spec example gives 15 / 10 / 5 | Done |
-| 5b. Matching: ranked receiver recommendations with reasons, "Recommended for you", match scores on incoming requests | Next |
+| 5b. Matching v1 (explainable heuristic): ranked receivers with score parts and reasons, explained exclusions, "Recommended for you", match scores on incoming requests, stored snapshots with outcomes | Done |
+| 6. Collection and volunteers: handover, receipt, volunteer assignments and status tracking | Next |
 
 There's no website or mobile UI yet.
 

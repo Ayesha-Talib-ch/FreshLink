@@ -75,10 +75,4 @@ def reject_request(request_id: uuid.UUID, body: ReasonIn, user: ProviderOrAdmin,
 def request_history(request_id: uuid.UUID, user: CurrentUser, db: DbSession):  # noqa: ANN201
     return svc.history(db, user, request_id)
 
-
-@router.get("/listings/{listing_id}/requests", response_model=list[RequestOut], responses=error_responses(404))
-def incoming_requests(listing_id: uuid.UUID, user: ProviderOrAdmin, db: DbSession,
-                      status: RequestStatus | None = None):  # noqa: ANN201
-    """All requests for one of your listings, first come first, with each receiver's
-    details and distance."""
-    return svc.for_listing(db, user, listing_id, status)
+# GET /listings/{listing_id}/requests (with match scores) lives in app/api/v1/matching.py

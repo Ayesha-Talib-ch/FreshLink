@@ -78,6 +78,15 @@ class AllocationBrief(BaseModel):
     decision_reason: str
 
 
+class RequestMatch(BaseModel):
+    """How well this receiver matches the listing (matching v1); provider view only."""
+
+    score: float | None  # None when the receiver is excluded by a hard filter
+    rank: int | None
+    reasons: list[str]
+    excluded_reason: str | None
+
+
 class RequestOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -93,6 +102,7 @@ class RequestOut(BaseModel):
     rejection_reason: str | None
     responded_at: datetime | None
     distance_km: float  # pickup point -> receiver's saved location (straight line)
+    match: RequestMatch | None = None  # only on GET /listings/{id}/requests
     version: int
     created_at: datetime
     updated_at: datetime

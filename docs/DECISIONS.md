@@ -88,6 +88,18 @@ This file records decisions taken during development and any questions that are 
 | D70 | 2026-11-14 | Every `SELECT … FOR UPDATE` names its table (`with_for_update(of=Model)`), enforced by a guard test | Locking a model that auto-joins optional rows fails in PostgreSQL; this caused two bugs |
 | D71 | 2026-11-14 | No minimum allocation per receiver yet | Plan mentions an optional `min_alloc` setting; it needs `platform_settings` (admin stage) and CP-SAT |
 
+| D72 | 2026-11-14 | Matching v1 is an explainable weighted heuristic (`app/engines/matching.py`, version label `heuristic-v1`), not ML | Plan 7.4 and 1.4: honest labelling; a learned ranker (v2) replaces it only if it measurably beats v1 |
+| D73 | 2026-11-14 | Hard filters: verified + active + eligible; accepts the food category (declared preference); within the pickup radius, or with own transport within 50 km; not already allocated from this listing. Every exclusion is returned with its reason | Spec 6.3 "Receiver C: not eligible" + "displays recommendations and reasons" |
+| D74 | 2026-11-14 | Score = 0.30 distance (exp(-km/5)) + 0.20 capacity fit + 0.15 collection fit (own transport 1.0, else 0.5) + 0.15 urgency feasibility + 0.10 category priority + 0.10 fairness (allocations in the last 30 days) | Plan 7.4 default weights. "Collection fit" uses transport as an honest proxy because receivers' collection hours aren't collected yet |
+| D75 | 2026-11-14 | Matching results (live) show receiver name, category, distance and transport only; phone and address only appear once the receiver requests | Plan 5.3 field-level privacy |
+| D76 | 2026-11-14 | A snapshot is stored in `match_recommendations` on publish and on refresh, keeping outcomes (`requested`; `completed` in the collection stage) | Weak labels and evaluation data for the ML ranker (plan 7.1) |
+| D77 | 2026-11-14 | "Recommended for you" scores available listings for one receiver; fairness is neutral there (it compares receivers with each other); already-requested food is left out | Plan issue H6, job 2 |
+| D78 | 2026-11-14 | Notifying the top-K matched receivers (`POST /listings/{id}/matches/notify`) is deferred to the notifications stage | Needs the notifications table and dispatcher |
+
+## Known evaluation item
+
+- With the default weights, a receiver 33 km away **with a van and enough capacity** scored above one 5.9 km away without transport (0.68 vs 0.58), because exp(-km/5) falls steeply. Behaving as designed, but possibly not what people expect. Check against the hand-labelled evaluation set (plan 7.4) in the AI stage and tune the weights / distance curve there.
+
 ## API review after Stage 2a (2026-11-14)
 
 All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 lines are trivial), 4 problems were fixed (message prefix, wrong 422 docs, missing CORS header on 500, Swagger cookie flow), and every fix has a test that was shown to fail without it.
