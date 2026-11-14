@@ -92,8 +92,11 @@ def _ensure_available(db: Session, listing: FoodListing | None) -> FoodListing:
     if listing is None or listing.status == ListingStatus.REMOVED:
         raise AppError(404, "NOT_FOUND", "Listing not found.")
     urgency_service.attach(db, [listing])
+    from app.services.browse_service import active_provider_ids  # local: avoids an import cycle
+
+    provider_active = db.scalar(select(active_provider_ids().where(ProviderProfile.id == listing.provider_id).exists()))
     if (listing.status != ListingStatus.ACTIVE or listing.urgency.is_past_deadline
-            or listing.remaining_quantity <= 0):
+            or listing.remaining_quantity <= 0 or not provider_active):
         raise AppError(409, "LISTING_NOT_AVAILABLE", "This food is no longer available for requests.",
                        {"listing_status": listing.status.value})
     return listing

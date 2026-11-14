@@ -17,11 +17,11 @@ from sqlalchemy import Select, case, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.domain.enums import ListingStatus, QuantityUnit, UrgencyLevel, UserRole
+from app.domain.enums import AccountStatus, ListingStatus, QuantityUnit, UrgencyLevel, UserRole
 from app.engines.geo import haversine_km_sql
 from app.models.category import UrgencyRuleRow
 from app.models.listing import FoodListing
-from app.models.profiles import ReceiverProfile
+from app.models.profiles import ProviderProfile, ReceiverProfile
 from app.models.user import User
 from app.services import urgency_service
 
@@ -31,6 +31,12 @@ Sort = Literal["urgency", "distance", "deadline", "newest", "relevance"]
 _URGENCY_ORDER = {UrgencyLevel.CRITICAL: 0, UrgencyLevel.HIGH: 1, UrgencyLevel.MEDIUM: 2,
                   UrgencyLevel.INCOMPLETE: 3, UrgencyLevel.NORMAL: 4}
 _SIMILARITY = 0.35  # how close a misspelling may be ("biryni" vs "biryani")
+
+
+def active_provider_ids() -> Select:
+    """Providers whose account is active (not suspended, deactivated or deleted)."""
+    return select(ProviderProfile.id).join(User, User.id == ProviderProfile.user_id).where(
+        User.account_status == AccountStatus.ACTIVE, User.deleted_at.is_(None))
 
 
 def _available(query: Select, now: datetime) -> Select:
@@ -47,6 +53,7 @@ def _available(query: Select, now: datetime) -> Select:
         or_(FoodListing.expiry_at.is_(None), FoodListing.expiry_at > now),
         or_(FoodListing.best_before_at.is_(None), FoodListing.best_before_at > now),
         preparation_limit_ok,
+        FoodListing.provider_id.in_(active_provider_ids()),  # suspended providers' food is hidden
     )
 
 

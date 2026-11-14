@@ -1,6 +1,6 @@
 # FreshLink — Manual Testing Guide (Stages 0–6b)
 
-This guide tests **every API built so far (94 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (104 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
 - **Time needed:** about 165 minutes
@@ -616,6 +616,27 @@ Everything you did above has already left notifications behind. No new set-up is
 | ☐ | Admin: `PUT /api/v1/admin/notification-categories/request_new` with `{"is_enabled": false}`; NGO makes a new request | the provider gets **no** "New food request". Switch it back with `{"is_enabled": true}` |
 
 
+### 10.14 Dashboards and user management (Stage 8a)
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Provider: `GET /api/v1/me/dashboard` | `"role": "provider"` with `total_listings`, `active_listings`, `pending_requests`, `completed_distributions` … matching what you did above, plus `recent_notifications` |
+| ☐ | NGO, then volunteer: `GET /api/v1/me/dashboard` | `"role": "receiver"` (`available_food`, `rejected_requests` …) / `"role": "volunteer"` (`available_assignments`, `completed_deliveries` …) |
+| ☐ | Admin: `GET /api/v1/admin/dashboard` | all 15 metrics; `quantity_listed` and `quantity_distributed` are lists **per unit** (e.g. kg and package separately) |
+| ☐ | Admin: `GET /api/v1/admin/activity?limit=10` | newest first, e.g. *"… received 5 kg of Rice"*, *"guide.admin@example.com: announcement.send"* |
+| ☐ | Admin: `GET /api/v1/admin/users?q=guide&role=volunteer` | only the volunteer. Try `q` = part of a phone number such as `0300 111` |
+| ☐ | Admin: `GET /api/v1/admin/users/{user_id}` (the provider's id) | its `profile` (business name, category, address) and `counts` |
+| ☐ | Admin: `POST /api/v1/admin/users/{user_id}/suspend` (provider) with `{}` | **422** (a reason is required) |
+| ☐ | Same with `{"reason": "Licence under review"}` | **200** `"account_status": "suspended"` |
+| ☐ | NGO: `GET /api/v1/listings` | the provider's food is **gone** while it is suspended |
+| ☐ | Provider: `POST /api/v1/auth/login` | **403** `ACCOUNT_SUSPENDED` (and any old provider token now gives **401** `TOKEN_REVOKED`) |
+| ☐ | Admin: `POST .../{user_id}/activate` with `{}` | **200** `active`; the food is visible again; the provider gets *"Account reactivated"* |
+| ☐ | Admin: `GET /api/v1/admin/users/{user_id}/history` | `user.activate`, `user.suspend` (with the reason), verification steps, … `account.registered` last |
+| ☐ | Admin: suspend **your own** id (from `/auth/me`) | **409** `CANNOT_CHANGE_OWN_ACCOUNT` |
+| ☐ | Admin (a super admin, from section 10.2): `POST /api/v1/admin/admins` with `{"email": "guide.admin2@example.com", "phone": "0300 1110010", "full_name": "Second Admin", "password": "Admin-Two-2026"}` | **201**, `"is_super_admin": false`; it can log in |
+| ☐ | Log in as the second admin and try `POST /api/v1/admin/admins` again | **403** (only super admins create admins) |
+
+
 ---
 
 ## 11. Clean up the test accounts
@@ -631,7 +652,7 @@ docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM food_req
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM food_listings WHERE provider_id IN (SELECT p.id FROM provider_profiles p JOIN users u ON u.id = p.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM users WHERE email LIKE 'guide.%';"
 ```
-☐ The last command shows `DELETE 6` (provider, receiver, volunteer, admin, kitchen, family)
+☐ The last command shows `DELETE 7` (provider, receiver, volunteer, admin, kitchen, family, second admin)
 
 Notes:
 - The **audit log keeps its entries**. That's on purpose: history is never deleted.

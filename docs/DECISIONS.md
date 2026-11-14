@@ -123,6 +123,12 @@ This file records decisions taken during development and any questions that are 
 | D101 | 2026-11-14 | Urgency alerts go to the provider only when a listing **becomes** critical or expires, not on every scan | The scan runs every 5 minutes |
 | D102 | 2026-11-14 | Admins are alerted on new registrations, verification documents and failed collections; announcements are audited and go to everyone, one role, or chosen active users | Spec 4.4 "send announcements" |
 | D103 | 2026-11-14 | Each notification stores the related record (`entity_type`, `entity_id`); the API turns it into a `link` such as `/requests/{id}` for the apps to open | Both apps use the same links |
+| D104 | 2026-11-14 | One `/me/dashboard` endpoint returns a different shape per role (`role` field tells which); every counter is a live COUNT/SUM, nothing cached | Plan 4.3; the dashboard can't disagree with the lists |
+| D105 | 2026-11-14 | Dashboard meanings: "approved requests" = approved or partly approved and not yet completed; "completed distributions" = collections the receiver confirmed; "expired or cancelled listings" = expired or closed; removed listings are not counted | Spec lists the counters without defining them |
+| D106 | 2026-11-14 | Admin quantities follow plan 3.5 per unit: listed → allocated → collected (handed over) → distributed (received) | Kg and packages are never added together |
+| D107 | 2026-11-14 | Suspend and deactivate need a reason (≥ 5 characters), end every session at once and are audited; re-activating notifies the user | Plan 5.2 |
+| D108 | 2026-11-14 | Admins can't change their own status; only a super admin can change another admin's status or create admins (who are never super admins unless chosen) | Prevents lock-outs and privilege abuse |
+| D109 | 2026-11-14 | A suspended or deactivated provider's listings are hidden from browsing and can't be requested; they come back on re-activation. Existing approved collections are left for the admin to handle | Reversible; no data is changed |
 
 ## Known evaluation item
 
@@ -139,6 +145,7 @@ All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 l
 - The "allow small business receivers" platform setting (plan section 3.3) arrives with `platform_settings` in the admin stage; until then the category's `is_active` flag controls it.
 - Uploaded files of deleted users stay on disk (their database rows are deleted). A clean-up job and a document-retention setting (plan issue M7) belong to the worker/admin stages.
 - The worker process (plan section 2.1) must run the urgency scan every 5 minutes; until then run `python -m app.cli urgency-scan` by hand (or with Windows Task Scheduler for demos).
+- When a volunteer is suspended, tasks they already accepted stay with them; the admin reassigns or cancels them (Stage 6b endpoints). An automatic hand-back can come with the admin monitoring screens (8b).
 - Behind a hosting proxy, the client IP for rate limiting must come from `X-Forwarded-For` (`uvicorn --proxy-headers`). Configure this at deployment.
 
 ## Open (need the team's or supervisor's answer)
