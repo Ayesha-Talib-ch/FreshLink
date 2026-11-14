@@ -7,16 +7,19 @@ with 409 STALE_VERSION instead of silently overwriting the other change.
 """
 
 import uuid
-from typing import Annotated
+from datetime import datetime
+from decimal import Decimal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Header, Query, Response, status
 
-from app.api.deps import CurrentUser, DbSession, ProviderUser, VerifiedProvider
+from app.api.deps import CurrentUser, DbSession, FoodBrowser, ProviderUser, VerifiedProvider
 from app.core.errors import AppError, error_responses
-from app.domain.enums import ListingStatus
+from app.domain.enums import ListingStatus, QuantityUnit, UrgencyLevel
 from app.models.listing import FoodListing
 from app.schemas.common import Page
-from app.schemas.listings import ListingIn, ListingOut, StatusChangeIn, StatusHistoryOut, UrgencyOut
+from app.schemas.listings import BrowsePage, ListingIn, ListingOut, StatusChangeIn, StatusHistoryOut, UrgencyOut
+from app.services import browse_service
 from app.services import listing_service as svc
 
 router = APIRouter(tags=["listings"])
@@ -44,6 +47,41 @@ def create_listing(body: ListingIn, user: VerifiedProvider, db: DbSession, respo
     """Add a food listing (verified providers only). Leave the pickup location empty to
     use your business address. The declaration must be accepted."""
     return _with_etag(response, svc.create(db, user, body))
+
+
+@router.get("/listings", response_model=BrowsePage, responses=error_responses(422))
+def browse_listings(
+    user: FoodBrowser,
+    db: DbSession,
+    q: Annotated[str | None, Query(max_length=100, description="Food name or description; small typos are fine")] = None,
+    food_category_id: uuid.UUID | None = None,
+    unit: QuantityUnit | None = None,
+    min_quantity: Annotated[Decimal | None, Query(gt=0, description="Remaining quantity at least this (needs unit)")] = None,
+    near_lat: Annotated[float | None, Query(ge=-90, le=90)] = None,
+    near_lng: Annotated[float | None, Query(ge=-180, le=180)] = None,
+    radius_km: Annotated[float | None, Query(gt=0, le=100)] = None,
+    pickup_from: Annotated[datetime | None, Query(description="With time zone, e.g. 2026-11-15T15:00:00+05:00")] = None,
+    pickup_to: Annotated[datetime | None, Query(description="With time zone")] = None,
+    urgency: Annotated[list[UrgencyLevel] | None, Query()] = None,
+    sort: Literal["urgency", "distance", "deadline", "newest", "relevance"] = "urgency",
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> dict:
+    """Available food for verified receivers: active, quantity left, no deadline passed.
+
+    Without near_lat/near_lng, distances are measured from your saved receiver location,
+    and only listings within your pickup radius are shown (pass radius_km to change it).
+    Default order: most urgent first.
+    """
+    for name, value in (("pickup_from", pickup_from), ("pickup_to", pickup_to)):
+        if value is not None and value.tzinfo is None:
+            raise AppError(422, "VALIDATION_ERROR", f"{name} must include a time zone, e.g. +05:00.",
+                           {"fields": [{"field": f"query.{name}", "message": "Time zone required", "type": "timezone"}]})
+    return browse_service.browse(
+        db, user, q=q, food_category_id=food_category_id, unit=unit, min_quantity=min_quantity,
+        near_lat=near_lat, near_lng=near_lng, radius_km=radius_km, pickup_from=pickup_from, pickup_to=pickup_to,
+        urgency=urgency, sort=sort, page=page, page_size=page_size,
+    )
 
 
 @router.get("/providers/me/listings", response_model=Page[ListingOut], responses=error_responses(409))

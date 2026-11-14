@@ -130,6 +130,18 @@ def require_verified_provider(user: Annotated[User, Depends(require_roles(UserRo
 
 
 VerifiedProvider = Annotated[User, Depends(require_verified_provider)]
+
+
+def require_food_browser(user: CurrentUser) -> User:
+    """Verified receivers browse available food; administrators may too (monitoring)."""
+    if user.role == UserRole.ADMIN:
+        return user
+    if user.role != UserRole.RECEIVER:
+        raise AppError(403, "FORBIDDEN", "Only receivers can browse available food.")
+    return require_verified(user)
+
+
+FoodBrowser = Annotated[User, Depends(require_food_browser)]
 ProviderUser = Annotated[User, Depends(require_roles(UserRole.PROVIDER))]
 AdminUser = Annotated[User, Depends(require_roles(UserRole.ADMIN))]
 SuperAdminUser = Annotated[User, Depends(require_super_admin)]

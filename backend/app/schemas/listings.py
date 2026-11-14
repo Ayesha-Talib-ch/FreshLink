@@ -163,6 +163,22 @@ class ListingOut(BaseModel):
     version: int  # send it back in the If-Match header when editing
     created_at: datetime
     updated_at: datetime
+    distance_km: float | None = None  # only in search results that have a location
+
+
+class SearchLocation(BaseModel):
+    latitude: float
+    longitude: float
+    radius_km: float | None
+    source: str  # "request" (near_lat/near_lng given) or "profile" (receiver's saved location)
+
+
+class BrowsePage(BaseModel):
+    items: list[ListingOut]
+    total: int
+    page: int
+    page_size: int
+    location: SearchLocation | None  # where distances were measured from (None = no location)
 
 
 class StatusHistoryOut(BaseModel):

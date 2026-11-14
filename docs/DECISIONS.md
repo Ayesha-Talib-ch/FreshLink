@@ -60,6 +60,15 @@ This file records decisions taken during development and any questions that are 
 | D45 | 2026-11-14 | Receivers stop seeing a listing the moment its effective deadline passes, even before the scan runs | No one should request food that can no longer be collected |
 | D46 | 2026-11-14 | `urgency_rules.updated_by` has no foreign key | A FK to `users` made the test clean-up (TRUNCATE … CASCADE) wipe the seeded rules; the audit log already records who changed what. A guard test now checks that no seeded table points at an emptied table |
 
+| D47 | 2026-11-14 | Stage 4 split into 4a (browse/search) and 4b (requests) | Keeps each stage small and testable |
+| D48 | 2026-11-14 | Distance = Haversine straight-line km, calculated in SQL (`app/engines/geo.py`, with an identical Python version and a test that both agree) | Plan issue M3: no paid map API; road distance would need an external service |
+| D49 | 2026-11-14 | Without `near_lat/near_lng`, browse uses the receiver's saved location and pickup radius; `radius_km` overrides it (max 100 km) | Spec 6.3 "receiver location"; a receiver can widen the search, e.g. if they have transport |
+| D50 | 2026-11-14 | "Available" = active, quantity left, and no collection/expiry/best-before/preparation-limit deadline passed, checked in SQL | No one sees food that can no longer be collected, even before the expiry scan runs |
+| D51 | 2026-11-14 | Name search uses ILIKE (with `%`/`_` escaped) plus trigram `word_similarity > 0.35` | Typo tolerance ("biryni" finds "biryani") using the pg_trgm index from migration 0006 |
+| D52 | 2026-11-14 | A minimum-quantity filter requires a unit | Plan issue H1: 10 kg and 10 packages are not comparable |
+| D53 | 2026-11-14 | The urgency filter/sort uses the stored level (refreshed by writes and the scan); the response shows the live level | Fast SQL filtering; at most one scan interval behind |
+| D54 | 2026-11-14 | Admins may also use `GET /listings` (monitoring); providers and volunteers may not | Spec: browsing is a receiver feature; full admin listing management comes in the admin stage |
+
 ## API review after Stage 2a (2026-11-14)
 
 All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 lines are trivial), 4 problems were fixed (message prefix, wrong 422 docs, missing CORS header on 500, Swagger cookie flow), and every fix has a test that was shown to fail without it.

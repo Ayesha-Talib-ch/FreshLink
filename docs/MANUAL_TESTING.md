@@ -1,9 +1,9 @@
-# FreshLink — Manual Testing Guide (Stages 0–3b)
+# FreshLink — Manual Testing Guide (Stages 0–4a)
 
-This guide tests **every API built so far (48 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (49 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
-- **Time needed:** about 85 minutes
+- **Time needed:** about 95 minutes
 - **You need:** any small real PDF, JPG or PNG file on your computer (for section 10.4)
 - **Tick each box** as you go. If a result differs, copy the response and send it to the team.
 - All test accounts use emails starting with `guide.` so they're easy to delete afterwards (section 11).
@@ -443,6 +443,33 @@ python -m app.cli urgency-scan
 | ☐ | `GET /api/v1/listings/{listing_id}/history` with L2 | last row `expired`, reason *Deadline passed: the collection deadline was 1 h ago.* |
 | ☐ | Run `python -m app.cli urgency-scan` again | `0 expired` (safe to run any number of times) |
 
+
+### 10.7 Browse and search food (Stage 4a)
+
+First make the **receiver** verified (receivers can only browse after approval). As **admin**, approve the receiver
+the same way as the provider in 10.4. Or, for a quick test, run this in PowerShell:
+```powershell
+docker exec freshlink-db psql -U freshlink -d freshlink -c "UPDATE users SET verification_status = 'approved' WHERE email = 'guide.receiver@example.com';"
+```
+Then, as the **provider**, create two listings (as in 10.5) with their own pickup location:
+- "Fresh naan" (Bakery items, `package`, 40), pickup window ending in 30 h, `"pickup_address": "Gulberg"`, `"pickup_latitude": 31.521`, `"pickup_longitude": 74.359`
+- "Cake slices" (Bakery items, `piece`, 25), `"pickup_address": "Raiwind"`, `"pickup_latitude": 31.25`, `"pickup_longitude": 74.21`
+
+Log in as the receiver (`0300-1110002`, password `Fresh-Link-2026`; wait a minute if 10.1 blocked it) and **Authorize**.
+The receiver's saved location (section 6) is Model Town with a 6 km radius.
+
+| ✓ | `GET /api/v1/listings` with… | Expected |
+|---|---|---|
+| ☐ | nothing (defaults) | **200**. `location.source` is `"profile"`, `radius_km` 6. Naan (~5.9 km) is listed with `distance_km`; the cake (Raiwind, ~27.6 km) is **not** |
+| ☐ | `radius_km` = 50, `sort` = distance | both, nearest first |
+| ☐ | `q` = `nann` (a typo) | still finds "Fresh naan" |
+| ☐ | `unit` = package, `min_quantity` = 50 | none (only 40 left) |
+| ☐ | `min_quantity` = 10 without `unit` | **422** `UNIT_REQUIRED` |
+| ☐ | `urgency` = normal | only the listings whose level is normal |
+| ☐ | `near_lat` = 31.25, `near_lng` = 74.21, `radius_km` = 5 | only the cake (`location.source` = `"request"`) |
+| ☐ | As the provider: pause the naan, then browse again as the receiver | the naan disappears (paused food is hidden) |
+| ☐ | `GET /api/v1/listings` with the **provider's** token | **403** (only receivers browse) |
+
 ---
 
 ## 11. Clean up the test accounts
@@ -468,7 +495,7 @@ cd D:\University\FreshLink\backend
 .\.venv\Scripts\Activate.ps1
 pytest
 ```
-☐ `358 passed`. Docker must be running. The tests use a separate `freshlink_test` database, so your data is never touched.
+☐ `375 passed`. Docker must be running. The tests use a separate `freshlink_test` database, so your data is never touched.
 
 ---
 
