@@ -52,6 +52,14 @@ This file records decisions taken during development and any questions that are 
 | D38 | 2026-11-14 | Listing detail is visible to the owner, admins, and **verified** receivers while it's **active**; the public provider card shows only the business name | Spec 15: contact details only within an authorized transaction. Receiver browse/search comes in the receiver stage |
 | D39 | 2026-11-14 | Food photos (`listing_image`) are JPG/PNG only and readable by any logged-in user; verification documents stay private | A photo on a listing is public by nature |
 
+| D40 | 2026-11-14 | Urgency = **rule-based decision support**, a pure engine (`app/engines/urgency.py`): effective deadline = earliest of collection deadline, expiry, best-before, preparation + category limit; thresholds inclusive (exactly 6 h left = high) | Plan section 7.3; label it honestly in the report as "rule-based", not ML (plan 1.4) |
+| D41 | 2026-11-14 | Placeholder thresholds (medium/high/critical h, max h since preparation): bakery 48/24/6/72, cooked 12/6/2/12, fast food 12/6/2/8, produce 72/24/8/–, dairy 72/24/6/–, packaged 168/48/12/–, other 48/24/6/– | Demo values for prioritisation, **not food-safety limits**; admins change them via `PUT /admin/urgency-rules/{category}` (audited) |
+| D42 | 2026-11-14 | Missing required dates give `incomplete`, never `normal`; every result carries an explanation and a disclaimer ("not a food-safety assessment"); wording never says safe/fresh/edible | Spec 6.2 food-safety limitation; plan section 1.3 |
+| D43 | 2026-11-14 | Urgency is calculated live on every read; the stored `urgency_level` is for SQL filtering and is refreshed by writes and the scan | Responses are never stale; filtering stays fast |
+| D44 | 2026-11-14 | The expiry scan is idempotent and uses `SKIP LOCKED`; run by `python -m app.cli urgency-scan` until the worker process exists | Plan issue M8: the scheduler belongs in one separate worker process |
+| D45 | 2026-11-14 | Receivers stop seeing a listing the moment its effective deadline passes, even before the scan runs | No one should request food that can no longer be collected |
+| D46 | 2026-11-14 | `urgency_rules.updated_by` has no foreign key | A FK to `users` made the test clean-up (TRUNCATE … CASCADE) wipe the seeded rules; the audit log already records who changed what. A guard test now checks that no seeded table points at an emptied table |
+
 ## API review after Stage 2a (2026-11-14)
 
 All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 lines are trivial), 4 problems were fixed (message prefix, wrong 422 docs, missing CORS header on 500, Swagger cookie flow), and every fix has a test that was shown to fail without it.
@@ -62,6 +70,7 @@ All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 l
 - Stage 2b must decide what happens when an **approved** user edits key profile details (e.g. business name or category): keep the approval, or send the profile back for review.
 - The "allow small business receivers" platform setting (plan section 3.3) arrives with `platform_settings` in the admin stage; until then the category's `is_active` flag controls it.
 - Uploaded files of deleted users stay on disk (their database rows are deleted). A clean-up job and a document-retention setting (plan issue M7) belong to the worker/admin stages.
+- The worker process (plan section 2.1) must run the urgency scan every 5 minutes; until then run `python -m app.cli urgency-scan` by hand (or with Windows Task Scheduler for demos).
 - Behind a hosting proxy, the client IP for rate limiting must come from `X-Forwarded-For` (`uvicorn --proxy-headers`). Configure this at deployment.
 
 ## Open (need the team's or supervisor's answer)

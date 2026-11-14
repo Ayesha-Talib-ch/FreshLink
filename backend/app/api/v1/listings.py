@@ -16,7 +16,7 @@ from app.core.errors import AppError, error_responses
 from app.domain.enums import ListingStatus
 from app.models.listing import FoodListing
 from app.schemas.common import Page
-from app.schemas.listings import ListingIn, ListingOut, StatusChangeIn, StatusHistoryOut
+from app.schemas.listings import ListingIn, ListingOut, StatusChangeIn, StatusHistoryOut, UrgencyOut
 from app.services import listing_service as svc
 
 router = APIRouter(tags=["listings"])
@@ -109,3 +109,9 @@ def remove_listing(listing_id: uuid.UUID, user: VerifiedProvider, db: DbSession)
 def listing_history(listing_id: uuid.UUID, user: CurrentUser, db: DbSession):  # noqa: ANN201
     """Every status change of the listing (owner and administrators)."""
     return svc.history(db, user, listing_id)
+
+
+@router.get("/listings/{listing_id}/urgency", response_model=UrgencyOut, responses=error_responses(404))
+def listing_urgency(listing_id: uuid.UUID, user: CurrentUser, db: DbSession):  # noqa: ANN201
+    """Level, the deadline that drove it, hours left, and the rule applied (spec 6.2)."""
+    return svc.get_visible(db, user, listing_id).urgency

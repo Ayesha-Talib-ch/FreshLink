@@ -1,9 +1,9 @@
-# FreshLink — Manual Testing Guide (Stages 0–3a)
+# FreshLink — Manual Testing Guide (Stages 0–3b)
 
-This guide tests **every API built so far (45 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (48 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
-- **Time needed:** about 75 minutes
+- **Time needed:** about 85 minutes
 - **You need:** any small real PDF, JPG or PNG file on your computer (for section 10.4)
 - **Tick each box** as you go. If a result differs, copy the response and send it to the team.
 - All test accounts use emails starting with `guide.` so they're easy to delete afterwards (section 11).
@@ -407,6 +407,42 @@ Example: if it's now 15 Nov, 14:00 → `"pickup_window_start": "2026-11-15T15:00
 
 💡 The response shows times in UTC (`...Z`), e.g. 18:00+05:00 appears as 13:00Z. It's the same moment; the apps will display Pakistan time.
 
+
+### 10.6 Urgency (Stage 3b)
+
+Still logged in as the provider. Create a new **Cooked meals** listing like in 10.5, with
+`preparation_at` **9 hours ago** and the pickup window ending **8 hours** from now.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Look at `urgency` in the 201 response | `level` **high**, explanation *High urgency: preparation time limit (12 h) in about 3 h* (cooked food counts from preparation, not from the pickup time), and the disclaimer *…not a food-safety assessment.* 📋 copy the `id` as **L2** |
+| ☐ | `GET /api/v1/listings/{listing_id}/urgency` with L2 | the same urgency on its own, including the `rule` (12 / 6 / 2 / 12) |
+| ☐ | Create a **Bakery items** listing whose pickup window ends 3 days from now | `level` **normal** |
+
+**Admin: change a rule.** Authorize as `guide.admin@example.com`.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `GET /api/v1/admin/urgency-rules` | 7 rules, each with the note *Not a food-safety limit* |
+| ☐ | `PUT /api/v1/admin/urgency-rules/{food_category_id}` (Cooked meals id) with `{"medium_hours": 12, "high_hours": 2, "critical_hours": 6, "max_hours_since_preparation": 12}` | **422**, *critical < high < medium* |
+| ☐ | Same with `{"medium_hours": 12, "high_hours": 6, "critical_hours": 4, "max_hours_since_preparation": 12}` | **200** |
+| ☐ | Authorize as the provider → `GET /api/v1/listings/{listing_id}/urgency` with L2 | now **critical** (3 h left ≤ the new 4 h limit). The new rule applies immediately |
+| ☐ | Put the rule back: `critical_hours` 2 | **200** |
+
+**Automatic expiry.** In PowerShell, make L2's deadline pass, then run the scan:
+```powershell
+docker exec freshlink-db psql -U freshlink -d freshlink -c "UPDATE food_listings SET pickup_window_start = now() - interval '5 hours', pickup_window_end = now() - interval '2 hours', collection_deadline = now() - interval '1 hour' WHERE id = 'PASTE-L2';"
+cd D:\University\FreshLink\backend
+.\.venv\Scripts\Activate.ps1
+python -m app.cli urgency-scan
+```
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | The scan command | `[OK] Checked … open listings: 1 expired, …` |
+| ☐ | `GET /api/v1/listings/{listing_id}` with L2 | `"status": "expired"` |
+| ☐ | `GET /api/v1/listings/{listing_id}/history` with L2 | last row `expired`, reason *Deadline passed: the collection deadline was 1 h ago.* |
+| ☐ | Run `python -m app.cli urgency-scan` again | `0 expired` (safe to run any number of times) |
+
 ---
 
 ## 11. Clean up the test accounts
@@ -432,7 +468,7 @@ cd D:\University\FreshLink\backend
 .\.venv\Scripts\Activate.ps1
 pytest
 ```
-☐ `306 passed`. Docker must be running. The tests use a separate `freshlink_test` database, so your data is never touched.
+☐ `358 passed`. Docker must be running. The tests use a separate `freshlink_test` database, so your data is never touched.
 
 ---
 

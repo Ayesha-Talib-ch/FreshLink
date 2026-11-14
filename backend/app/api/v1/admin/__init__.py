@@ -2,7 +2,8 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.admin import verification
+from app.api.v1.admin import urgency, verification
 
 router = APIRouter(prefix="/admin")
 router.include_router(verification.router)
+router.include_router(urgency.router)

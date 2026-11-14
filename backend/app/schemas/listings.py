@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.domain.enums import COUNTABLE_UNITS, DistributionType, ListingStatus, QuantityUnit
+from app.domain.enums import COUNTABLE_UNITS, DistributionType, ListingStatus, QuantityUnit, UrgencyLevel
 from app.schemas.lookups import FoodCategoryOut
 from app.schemas.verification import FileOut
 
@@ -107,6 +107,31 @@ class ProviderCard(BaseModel):
     business_name: str
 
 
+class UrgencyRuleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    medium_hours: float
+    high_hours: float
+    critical_hours: float
+    max_hours_since_preparation: float | None
+
+
+class UrgencyOut(BaseModel):
+    """Date-based urgency with its explanation. Calculated live on every request."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    level: UrgencyLevel
+    explanation: str  # e.g. "High urgency: collection deadline in 3 h 20 m."
+    effective_deadline: datetime  # the earliest relevant deadline
+    deadline_source: str  # which date that was
+    hours_left: float
+    is_past_deadline: bool
+    missing_fields: list[str]
+    rule: UrgencyRuleOut  # the thresholds that were applied
+    disclaimer: str  # always shown: this is not a food-safety assessment
+
+
 class ListingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -133,6 +158,7 @@ class ListingOut(BaseModel):
     distribution_type: DistributionType
     image: FileOut | None
     status: ListingStatus
+    urgency: UrgencyOut
     declaration_accepted: bool
     version: int  # send it back in the If-Match header when editing
     created_at: datetime

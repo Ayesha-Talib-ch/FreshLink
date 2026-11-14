@@ -17,7 +17,8 @@ Development started. Each stage is added and tested one at a time.
 | 2a. Categories (seeded), public lookups, provider/receiver/volunteer profiles, receiver food preferences (capacity), volunteer availability, account update | Done |
 | 2b. Private document upload, verification submit/status, admin queue with approve / reject / request info, receiver eligibility, append-only audit log | Done |
 | 3a. Food listings: create / view / edit (optimistic locking) / pause / resume / close / remove, category date rules, food photos, status history | Done |
-| 3b. Urgency engine (normal / medium / high / critical) and automatic expiry | Next |
+| 3b. Urgency engine (rule-based, per-category thresholds, explanations), admin urgency rules, expiry scan (`python -m app.cli urgency-scan`) | Done |
+| 4. Receiver features: browse / search / filter listings, request food | Next |
 
 There's no website or mobile UI yet.
 

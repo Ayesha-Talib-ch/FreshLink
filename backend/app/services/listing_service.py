@@ -22,6 +22,7 @@ from app.models.profiles import ProviderProfile
 from app.models.user import User
 from app.models.verification import StoredFile
 from app.schemas.listings import ListingIn
+from app.services import urgency_service
 
 # How far ahead a listing may be scheduled. Surplus food is short-lived; a date in
 # 2099 is almost certainly a typo.
@@ -99,6 +100,19 @@ def _apply(listing: FoodListing, provider: ProviderProfile, body: ListingIn) -> 
         listing.pickup_longitude = body.pickup_longitude
 
 
+def _with_urgency(db: Session, listing: FoodListing) -> FoodListing:
+    urgency_service.attach(db, [listing])
+    return listing
+
+
+def _store_urgency(db: Session, listing: FoodListing) -> None:
+    db.flush()
+    db.refresh(listing, ["food_category"])  # the category may have changed in this edit
+    rule = urgency_service.rules_by_category(db, [listing.food_category_id])[listing.food_category_id]
+    now = _now()
+    urgency_service.store_level(listing, urgency_service.assess_listing(listing, rule, now), now)
+
+
 def _history(db: Session, listing: FoodListing, from_status: ListingStatus | None, to_status: ListingStatus,
              user: User, reason: str | None = None) -> None:
     db.add(ListingStatusHistory(listing_id=listing.id, from_status=from_status.value if from_status else None,
@@ -113,9 +127,10 @@ def create(db: Session, user: User, body: ListingIn) -> FoodListing:
     db.add(listing)
     db.flush()  # assigns listing.id for the history row
     _history(db, listing, None, ListingStatus.ACTIVE, user, "created")
+    _store_urgency(db, listing)
     db.commit()
     db.refresh(listing)
-    return listing
+    return _with_urgency(db, listing)
 
 
 def _owned_for_update(db: Session, user: User, listing_id: uuid.UUID) -> FoodListing:
@@ -143,9 +158,10 @@ def update(db: Session, user: User, listing_id: uuid.UUID, expected_version: int
     _validate(db, listing.provider, body, _now())
     _apply(listing, listing.provider, body)
     listing.version += 1
+    _store_urgency(db, listing)
     db.commit()
     db.refresh(listing)
-    return listing
+    return _with_urgency(db, listing)
 
 
 def change_status(db: Session, user: User, listing_id: uuid.UUID, target: ListingStatus,
@@ -160,7 +176,7 @@ def change_status(db: Session, user: User, listing_id: uuid.UUID, target: Listin
     _history(db, listing, previous, target, user, (reason or "").strip() or None)
     db.commit()
     db.refresh(listing)
-    return listing
+    return _with_urgency(db, listing)
 
 
 def my_listings(db: Session, user: User, status: ListingStatus | None, page: int, page_size: int) -> dict[str, Any]:
@@ -171,15 +187,21 @@ def my_listings(db: Session, user: User, status: ListingStatus | None, page: int
     total = db.scalar(select(func.count()).select_from(query.subquery()))
     items = db.scalars(query.order_by(FoodListing.created_at.desc(), FoodListing.id)
                        .offset((page - 1) * page_size).limit(page_size)).all()
+    urgency_service.attach(db, list(items))
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 def get_visible(db: Session, user: User, listing_id: uuid.UUID) -> FoodListing:
     listing = db.get(FoodListing, listing_id)
+    if listing is not None:
+        _with_urgency(db, listing)
     visible = listing is not None and (
         user.role == UserRole.ADMIN
         or (listing.provider.user_id == user.id and listing.status != ListingStatus.REMOVED)
-        or (user.role == UserRole.RECEIVER and user.is_verified and listing.status == ListingStatus.ACTIVE)
+        # Receivers: only active listings whose deadline hasn't passed (even if the
+        # expiry job hasn't run yet).
+        or (user.role == UserRole.RECEIVER and user.is_verified and listing.status == ListingStatus.ACTIVE
+            and not listing.urgency.is_past_deadline)
     )
     if not visible:
         raise AppError(404, "NOT_FOUND", "Listing not found.")

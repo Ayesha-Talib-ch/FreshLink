@@ -2,6 +2,7 @@
 
 Usage, from the backend/ folder with the venv active:
     python -m app.cli create-admin
+    python -m app.cli urgency-scan
 
 The password is typed at a hidden prompt. It is never passed as a command
 argument (that would be saved in the terminal history) and never stored in
@@ -76,6 +77,22 @@ def create_admin_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def urgency_scan_command(args: argparse.Namespace) -> int:
+    """Expire listings whose deadline passed and refresh stored urgency levels.
+    The worker process will run this every 5 minutes (later stage)."""
+    from app.services import urgency_service
+
+    engine = create_db_engine(get_settings())
+    try:
+        with create_session_factory(engine)() as db:
+            result = urgency_service.scan(db)
+    finally:
+        engine.dispose()
+    print(f"[OK] Checked {result['checked']} open listings: {result['expired']} expired, "
+          f"{result['level_changes']} urgency level changes.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="FreshLink admin tools")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -85,6 +102,9 @@ def main(argv: list[str] | None = None) -> int:
     admin.add_argument("--name", help="full name (asked if omitted)")
     admin.add_argument("--phone", help="phone number (asked if omitted)")
     admin.set_defaults(func=create_admin_command)
+
+    scan = sub.add_parser("urgency-scan", help="Expire overdue listings and refresh urgency levels")
+    scan.set_defaults(func=urgency_scan_command)
 
     args = parser.parse_args(argv)
     try:

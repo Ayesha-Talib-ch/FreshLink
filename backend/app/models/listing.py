@@ -29,7 +29,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.domain.enums import DistributionType, ListingStatus, QuantityUnit
+from app.domain.enums import DistributionType, ListingStatus, QuantityUnit, UrgencyLevel
 from app.models.category import FoodCategory
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin, str_enum
 from app.models.profiles import ProviderProfile
@@ -49,6 +49,7 @@ class FoodListing(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint("pickup_longitude BETWEEN -180 AND 180", name="longitude_range"),
         CheckConstraint("declaration_accepted", name="declaration_required"),
         Index("ix_food_listings_status_deadline", "status", "collection_deadline"),
+        Index("ix_food_listings_status_urgency", "status", "urgency_level"),
         # Fuzzy search on the food name ("biryni" finds "Biryani"), used by receiver search.
         Index("ix_food_listings_food_name_trgm", "food_name",
               postgresql_using="gin", postgresql_ops={"food_name": "gin_trgm_ops"}),
@@ -89,6 +90,12 @@ class FoodListing(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     status: Mapped[ListingStatus] = mapped_column(
         str_enum(ListingStatus, "listing_status"), server_default=ListingStatus.ACTIVE.value
     )
+    # Last urgency level stored by a write or by the urgency scan, so lists can be
+    # filtered/sorted by urgency in SQL. The API always recalculates it live on read.
+    urgency_level: Mapped[UrgencyLevel] = mapped_column(
+        str_enum(UrgencyLevel, "urgency_level"), server_default=UrgencyLevel.NORMAL.value
+    )
+    urgency_computed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The provider's confirmation that the information is accurate (plan section 1.3).
     declaration_accepted: Mapped[bool] = mapped_column(Boolean)
     # Optimistic locking: every edit increases this number. An edit based on an

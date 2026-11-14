@@ -9,9 +9,10 @@ by migration 0004; admin screens to edit them come in the admin stage.
 `name` is the label users see and admins may rename.
 """
 
+import uuid
 from decimal import Decimal
 
-from sqlalchemy import Boolean, CheckConstraint, Integer, Numeric, String, Text, text, true
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, Numeric, String, Text, text, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -62,3 +63,30 @@ class FoodCategory(_CategoryColumns, Base):
     # Admin-set conversion factors for the "estimated meals" report figure,
     # e.g. {"kg": 4, "portion": 1}. Always labelled as an estimate (plan issue H1).
     meals_per_unit: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+
+
+class UrgencyRuleRow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Per-food-category urgency thresholds (plan section 3.3 "urgency_rules").
+
+    PLATFORM PRIORITISATION RULES set by administrators, not food-safety limits.
+    The seeded values are demo placeholders (plan section 1.3).
+    """
+
+    __tablename__ = "urgency_rules"
+    __table_args__ = (
+        CheckConstraint("critical_hours > 0 AND critical_hours < high_hours AND high_hours < medium_hours",
+                        name="threshold_order"),
+        CheckConstraint("max_hours_since_preparation IS NULL OR max_hours_since_preparation > 0",
+                        name="max_since_preparation_positive"),
+    )
+
+    food_category_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("food_categories.id", ondelete="CASCADE"), unique=True
+    )
+    medium_hours: Mapped[Decimal] = mapped_column(Numeric(6, 2))
+    high_hours: Mapped[Decimal] = mapped_column(Numeric(6, 2))
+    critical_hours: Mapped[Decimal] = mapped_column(Numeric(6, 2))
+    max_hours_since_preparation: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    # Plain id, no foreign key (like audit_logs.actor_id): it survives the admin's
+    # account being deleted, and the audit log holds the full change history.
+    updated_by: Mapped[uuid.UUID | None] = mapped_column()

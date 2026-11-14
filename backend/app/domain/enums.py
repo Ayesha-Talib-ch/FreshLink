@@ -111,3 +111,13 @@ class DistributionType(StrEnum):
     Only free donation is enabled in v1 (Technical Plan issue M5)."""
 
     FREE_DONATION = "free_donation"
+
+
+class UrgencyLevel(StrEnum):
+    """Date-based prioritisation levels (spec 6.2). NOT a food-safety rating."""
+
+    NORMAL = "normal"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+    INCOMPLETE = "incomplete"  # required date information is missing (plan section 1.3)
