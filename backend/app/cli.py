@@ -77,20 +77,33 @@ def create_admin_command(args: argparse.Namespace) -> int:
     return 0
 
 
-def urgency_scan_command(args: argparse.Namespace) -> int:
-    """Expire listings whose deadline passed and refresh stored urgency levels.
-    The worker process will run this every 5 minutes (later stage)."""
-    from app.services import urgency_service
+def run_job_command(args: argparse.Namespace) -> int:
+    """Run one background job now and record it (the worker runs them on a schedule)."""
+    from app.core.storage import LocalStorage
+    from app.services.job_service import run_job
 
-    engine = create_db_engine(get_settings())
+    settings = get_settings()
+    engine = create_db_engine(settings)
     try:
-        with create_session_factory(engine)() as db:
-            result = urgency_service.scan(db)
+        run = run_job(engine, create_session_factory(engine), LocalStorage(settings.storage_dir), args.job, "cli")
     finally:
         engine.dispose()
-    print(f"[OK] Checked {result['checked']} open listings: {result['expired']} expired, "
-          f"{result['level_changes']} urgency level changes.")
-    return 0
+    if run.status == "success" and args.job == "urgency_scan":  # the Stage 3b wording, used in the guide
+        r = run.result
+        print(f"[OK] Checked {r['checked']} open listings: {r['expired']} expired, "
+              f"{r['level_changes']} urgency level changes.")
+        return 0
+    if run.status == "success":
+        print(f"[OK] {args.job}: " + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in (run.result or {}).items()))
+        return 0
+    print(f"[x] {args.job} {run.status}: {(run.error or '').splitlines()[0] if run.error else ''}")
+    return 1
+
+
+def urgency_scan_command(args: argparse.Namespace) -> int:
+    """Kept from Stage 3b: the same as `run-job urgency_scan`."""
+    args.job = "urgency_scan"
+    return run_job_command(args)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -105,6 +118,12 @@ def main(argv: list[str] | None = None) -> int:
 
     scan = sub.add_parser("urgency-scan", help="Expire overdue listings and refresh urgency levels")
     scan.set_defaults(func=urgency_scan_command)
+
+    from app.services.job_service import JOBS
+
+    job = sub.add_parser("run-job", help="Run one background job now: " + ", ".join(JOBS))
+    job.add_argument("job", choices=list(JOBS))
+    job.set_defaults(func=run_job_command)
 
     args = parser.parse_args(argv)
     try:

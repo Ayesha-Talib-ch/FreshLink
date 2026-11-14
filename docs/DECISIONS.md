@@ -151,6 +151,12 @@ This file records decisions taken during development and any questions that are 
 | D129 | 2026-11-14 | A new food category starts with the same urgency thresholds as "other" (48 / 24 / 6 hours); admins adjust them in /admin/urgency-rules | Its listings get urgency levels immediately |
 | D130 | 2026-11-14 | "Allow small business receivers" (plan 3.3) = activate or deactivate the `small_business` receiver category; no separate setting | One switch, not two that could disagree |
 | D131 | 2026-11-14 | Verification requirements: role and document type are fixed once created; name, required/optional and active can change; a receiver requirement can apply to all receivers or one category | Spec 4.4.11 "verification requirements" |
+| D132 | 2026-11-14 | Background jobs run in ONE separate worker process (`python -m app.worker`, APScheduler 3): a PostgreSQL advisory lock refuses a second worker; each job also takes its own lock, so an admin's "run now" can't overlap the schedule (recorded as "skipped") | Plan M8: a scheduler inside several API workers runs jobs several times |
+| D133 | 2026-11-14 | Jobs: urgency_scan and collection_reminders every 5 minutes; token_cleanup and file_cleanup daily; every job runs once at worker start-up; missed runs are merged into one (coalesce) | The scan must run every 5 minutes (D44); clean-ups are not urgent |
+| D134 | 2026-11-14 | Every run is stored in job_runs (status, counts, error) for 30 days; a failing job is recorded and logged but never stops the worker; admins see the last run and last success per job | A stale "last success" shows that the worker isn't running |
+| D135 | 2026-11-14 | Pickup reminder: one hour before the agreed pickup time (or, without one, the end of the pickup window) the receiver, provider and assigned volunteer get one notification; never repeated (collections.reminder_sent_at); not sent after the handover | Spec 13 "collection reminder" |
+| D136 | 2026-11-14 | token_cleanup deletes refresh tokens that expired more than a day ago; revoked tokens are kept until they expire, because they are how a reused (stolen) token is recognised | Resolves the "refresh tokens never deleted" follow-up safely |
+| D137 | 2026-11-14 | file_cleanup deletes uploads never attached to a listing or document after 24 hours, and files on disk with no database row (left by deleted users) after 24 hours; database rows are deleted before the files | Resolves the "files of deleted users stay on disk" follow-up; the grace period protects uploads in progress |
 
 ## Known evaluation item
 
@@ -162,10 +168,8 @@ All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 l
 
 ## Known follow-ups
 
-- Expired/revoked refresh-token rows are never deleted yet. A clean-up job belongs in the worker process (plan section 2.1, worker stage).
 - Stage 2b must decide what happens when an **approved** user edits key profile details (e.g. business name or category): keep the approval, or send the profile back for review.
-- Uploaded files of deleted users stay on disk (their database rows are deleted). A clean-up job and a document-retention setting (plan issue M7) belong to the worker/admin stages.
-- The worker process (plan section 2.1) must run the urgency scan every 5 minutes; until then run `python -m app.cli urgency-scan` by hand (or with Windows Task Scheduler for demos).
+- A document-retention period for approved users' verification documents (plan issue M7) is not implemented; files are deleted only when unattached or when the user is deleted (D137). Decide the retention rule with the supervisor.
 - When a volunteer is suspended, tasks they already accepted stay with them; the admin reassigns or cancels them (Stage 6b endpoints). An automatic hand-back can come with the admin monitoring screens (8b).
 - PDF exports use Latin-1 fonts. If Urdu names must appear in PDFs, bundle a Unicode font (e.g. Noto Naskh Arabic) in the deployment stage.
 - Behind a hosting proxy, the client IP for rate limiting must come from `X-Forwarded-For` (`uvicorn --proxy-headers`). Configure this at deployment.

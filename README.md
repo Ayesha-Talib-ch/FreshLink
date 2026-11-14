@@ -29,7 +29,8 @@ Development started. Each stage is added and tested one at a time.
 | 8b. Admin listings monitor with date warnings; listing moderation (suspend / reinstate / close / remove, with reasons); volunteer overview (load, completion rate); allocation-run monitor (suggested vs approved, overrides); problem reports for every role, reviewed and resolved by admins | Done |
 | 8c. Reports (summary, weekly / monthly trends, categories, providers, receivers, volunteers) with the spec's filters; CSV and PDF export; fairness report (fill ratio per receiver category, Gini per unit, override rate); audit-log viewer | Done |
 | 8d. System management: food / provider / receiver categories (add, edit, deactivate, delete if unused), verification requirements, platform settings that change real behaviour (matching weights, travel limit, default allocation policy, match notifications, days ahead), all audited | Done |
-| 9. Background worker (scheduled urgency scan and clean-ups), then the AI / ML stage | Next |
+| 9. Background worker (`python -m app.worker`, one instance only): urgency scan and pickup reminders every 5 min, daily clean-up of expired sessions and unattached / left-behind files; job history, admin "run now", `python -m app.cli run-job` | Done |
+| 10. AI / ML: surplus estimation model and matching evaluation | Next |
 
 There's no website or mobile UI yet.
 
@@ -89,6 +90,7 @@ If PowerShell says running scripts is disabled, run this once and try again:
 cd D:\University\FreshLink\backend
 .\.venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload     # start the API at http://127.0.0.1:8000
+python -m app.worker              # (in a second window) the background jobs; only one may run
 pytest                            # run all tests (needs the database running)
 pytest --cov=app --cov-report=term-missing   # also show which code lines no test runs
 ```

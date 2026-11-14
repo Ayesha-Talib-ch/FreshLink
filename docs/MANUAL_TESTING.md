@@ -1,6 +1,6 @@
 # FreshLink — Manual Testing Guide (Stages 0–6b)
 
-This guide tests **every API built so far (143 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (146 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
 - **Time needed:** about 165 minutes
@@ -692,6 +692,21 @@ Log in as the admin. **Undo what you change here at the end** (the last rows sho
 | ☐ | `DELETE /api/v1/admin/food-categories/{category_id}` with the **Bakery items** id | **409** `CATEGORY_IN_USE` (listings use it) |
 | ☐ | `POST /api/v1/admin/verification-requirements` with `{"role": "volunteer", "receiver_category_id": "<any id>", "document_type": "guide_doc", "name": "Test"}` | **422** `CATEGORY_ONLY_FOR_RECEIVERS` |
 | ☐ | **Undo:** `DELETE /api/v1/admin/settings/match_notify_top_k` and `.../listing_max_days_ahead`; `DELETE /api/v1/admin/food-categories/{id}` (Sweets) | settings back to default; **204** |
+
+
+### 10.18 The background worker (Stage 9)
+
+Open a **second** PowerShell window in `backend` (venv active) next to the running API.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `python -m app.worker` | `[OK] FreshLink worker started: urgency_scan every 5 min, collection_reminders every 5 min, token_cleanup every 1440 min, file_cleanup every 1440 min.` and log lines as each job runs once |
+| ☐ | In a **third** window: `python -m app.worker` | `[x] Another FreshLink worker is already running. Only one may run at a time.` |
+| ☐ | Admin: `GET /api/v1/admin/jobs` | four jobs, each with `last_run.status = "success"` and `trigger = "schedule"` |
+| ☐ | Admin: `POST /api/v1/admin/jobs/token_cleanup/run` | **200** `success` with `trigger: "admin"` and counts in `result` |
+| ☐ | `python -m app.cli run-job file_cleanup` | `[OK] file_cleanup: unattached uploads deleted 0, files without record deleted 0` |
+| ☐ | Admin: `GET /api/v1/admin/jobs/runs?job=urgency_scan` | the runs, newest first |
+| ☐ | Stop the worker with **Ctrl+C** | `[OK] Worker stopped.` (a new worker can start again) |
 
 
 ---

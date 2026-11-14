@@ -21,3 +21,6 @@ python-multipart==0.0.33   # lets FastAPI read multipart/form-data uploads
 
 # Report exports (Stage 8c)
 fpdf2==2.9.0              # PDF export of admin reports (pure Python)
+
+# Background worker (Stage 9)
+APScheduler==3.11.3       # runs the scheduled jobs in the separate worker process
