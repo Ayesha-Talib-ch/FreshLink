@@ -43,6 +43,7 @@ from app.models.request import FoodRequest, RequestStatusHistory
 from app.models.user import User
 from app.services import assignment_service, urgency_service
 from app.services.audit_service import ClientInfo, record
+from app.services import notification_service
 
 
 def _now() -> datetime:
@@ -165,6 +166,10 @@ def handover(db: Session, user: User, collection_id: uuid.UUID, quantity: Decima
         raise AppError(403, "FORBIDDEN", "Only the provider confirms the handover.")
     perform_handover(db, collection, user, quantity, notes)
     assignment_service.on_provider_handover(db, collection.id, user.id)
+    notification_service.notify(db, [collection.receiver.user_id], "collection_update", "Food handed over",
+                 f"{format_quantity(collection.handed_over_quantity, collection.listing.unit)} of "
+                 f"{collection.listing.food_name} left the provider. Please confirm when you receive it.",
+                 "collection", collection.id)
     if user.role == UserRole.ADMIN:
         record(db, actor=user, action="collection.handover", entity_type="collection", entity_id=collection.id,
                client=client, after={"handed_over_quantity": str(quantity)})
@@ -192,6 +197,10 @@ def receipt(db: Session, user: User, collection_id: uuid.UUID, quantity: Decimal
     collection.notes = notes or collection.notes
     collection.version += 1
     collection.allocation.status = AllocationStatus.COMPLETED
+    notification_service.notify(db, [collection.provider.user_id], "collection_update", "Food received",
+                 f"{collection.receiver.receiver_name} received "
+                 f"{format_quantity(collection.received_quantity, collection.listing.unit)} of "
+                 f"{collection.listing.food_name}. Thank you!", "collection", collection.id)
 
     request = db.get(FoodRequest, collection.request_id)
     _request_history(db, request, RequestStatus.COMPLETED, user,
@@ -232,6 +241,13 @@ def perform_failure(db: Session, collection_id: uuid.UUID, user: User, reason: s
     request = db.get(FoodRequest, collection.request_id)
     _request_history(db, request, RequestStatus.CANCELLED, user, f"collection failed: {reason}")
     assignment_service.on_collection_failed(db, collection.id, user.id, reason)
+    others = [uid for uid in (collection.provider.user_id, collection.receiver.user_id) if uid != user.id]
+    notification_service.notify(db, others, "collection_update", "Collection failed",
+                 f"The collection of {collection.listing.food_name} did not happen: {reason}",
+                 "collection", collection.id)
+    notification_service.notify(db, notification_service.admin_ids(db), "admin_alert", "Failed collection",
+                 f"{collection.listing.food_name} for {collection.receiver.receiver_name}: {reason}",
+                 "collection", collection.id)
     record(db, actor=user, action="collection.fail", entity_type="collection", entity_id=collection.id,
            client=client, reason=reason, before={"status": before.value}, after={"status": "failed"})
     return collection

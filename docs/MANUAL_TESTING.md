@@ -1,6 +1,6 @@
 # FreshLink — Manual Testing Guide (Stages 0–6b)
 
-This guide tests **every API built so far (86 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (94 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
 - **Time needed:** about 165 minutes
@@ -594,6 +594,27 @@ A delivery task opens automatically. Log in as the volunteer (password `New-Fres
 **Optional: decline and reassign.** Create another needs-volunteer request and approve it. As admin, `POST /api/v1/assignments/{task_id}/assign`
 with the volunteer's profile `id` (from suggested-volunteers). As the volunteer, `POST .../decline` with
 `{"reason": "Exam tomorrow, sorry"}`: the task is `declined` and a new `open` task appears.
+
+### 10.13 Notifications (Stage 7)
+
+Everything you did above has already left notifications behind. No new set-up is needed.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Provider: `GET /api/v1/notifications/unread-count` | **200** `{"unread": N}` with N > 0 |
+| ☐ | Provider: `GET /api/v1/notifications` | newest first: e.g. *"Food received"*, *"New food request"*; each has a `link` such as `/requests/…`. 📋 copy one `id` as **N1** |
+| ☐ | NGO: `GET /api/v1/notifications` | e.g. *"Request approved"* (*"You will receive 5 kg of Rice…"*), *"Food handed over"*, *"Food you may need"* (a new listing that matches you) |
+| ☐ | Provider (same list) | *"More information needed"* and *"Account approved"* from section 10.4 |
+| ☐ | Volunteer: `GET /api/v1/notifications` | if you did the optional part of 10.12: *"New delivery task"* (assigned by the admin) |
+| ☐ | Admin: `GET /api/v1/notifications` | *"New registration"* for each account and *"Documents to review"* |
+| ☐ | NGO: `POST /api/v1/notifications/{notification_id}/read` with **N1** (the provider's) | **404** `NOT_FOUND` (you can't touch someone else's) |
+| ☐ | Provider: `POST /api/v1/notifications/{notification_id}/read` (N1) | **200** `"is_read": true`; the unread count goes down by 1 |
+| ☐ | Provider: `POST /api/v1/notifications/read-all` | **200** `{"marked": …}`; then `?unread_only=true` returns `total: 0` |
+| ☐ | Admin: `POST /api/v1/admin/announcements` with `{"title": "Eid schedule", "body": "Pickups close at 6 pm on Eid.", "audience_type": "role", "audience_role": "receiver"}` | **201** with `recipient_count` (receivers only); the NGO sees it, the volunteer doesn't |
+| ☐ | Admin: same, `"audience_type": "role"` but no `audience_role` | **422** |
+| ☐ | Provider: `POST /api/v1/admin/announcements` | **403** `FORBIDDEN` |
+| ☐ | Admin: `PUT /api/v1/admin/notification-categories/request_new` with `{"is_enabled": false}`; NGO makes a new request | the provider gets **no** "New food request". Switch it back with `{"is_enabled": true}` |
+
 
 ---
 

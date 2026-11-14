@@ -24,7 +24,8 @@ Development started. Each stage is added and tested one at a time.
 | 5b. Matching v1 (explainable heuristic): ranked receivers with score parts and reasons, explained exclusions, "Recommended for you", match scores on incoming requests, stored snapshots with outcomes | Done |
 | 6a. Collections: created on allocation, schedule (method/time), provider handover, receiver receipt (completes the redistribution), failure with food returned, contacts shared within the transaction | Done |
 | 6b. Volunteer assignments: open tasks near the volunteer, claim / assign / accept / decline, step-by-step delivery (collected = handover), receipt completes the task, failures with reasons, admin suggestions / reassign / cancel, contacts only after accepting | Done |
-| 7. Notifications (in-app), then dashboards and the admin stage | Next |
+| 7. In-app notifications: list / unread count / mark read, links to the related record, sent inside the same transaction as each event (requests, decisions, allocations, collections, delivery tasks, verification, urgency, top-5 new-listing matches, admin alerts); admin announcements (everyone / one role / chosen users) and category switches | Done |
+| 8. Dashboards and the admin stage | Next |
 
 There's no website or mobile UI yet.
 

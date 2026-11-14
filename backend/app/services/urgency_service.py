@@ -17,11 +17,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.domain.enums import ListingStatus
+from app.domain.enums import ListingStatus, UrgencyLevel
 from app.engines.urgency import ListingDates, UrgencyResult, UrgencyRule, assess
 from app.models.category import UrgencyRuleRow
 from app.models.listing import FoodListing, ListingStatusHistory
 from app.services import request_service
+from app.services import notification_service as notes
 
 OPEN_STATUSES = (ListingStatus.ACTIVE, ListingStatus.PAUSED)
 
@@ -95,8 +96,13 @@ def scan(db: Session, now: datetime | None = None) -> dict[str, Any]:
             expired.append(listing.id)
             expired_requests += request_service.expire_pending_for_listing(
                 db, listing, None, "the listing expired: " + result.explanation)
+            notes.notify(db, [listing.provider.user_id], "listing_urgency", "Listing expired",
+                         f"{listing.food_name}: {result.explanation}", "listing", listing.id)
         elif listing.urgency_level != result.level:
             level_changes += 1
+            if result.level == UrgencyLevel.CRITICAL:  # notify once, when it BECOMES critical
+                notes.notify(db, [listing.provider.user_id], "listing_urgency", "Listing needs attention",
+                             f"{listing.food_name}: {result.explanation}", "listing", listing.id)
         store_level(listing, result, now)
     db.commit()
     return {"checked": len(listings), "expired": len(expired), "level_changes": level_changes,

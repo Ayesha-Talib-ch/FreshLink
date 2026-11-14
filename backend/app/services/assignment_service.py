@@ -40,6 +40,7 @@ from app.models.listing import FoodListing
 from app.models.profiles import ProviderProfile, ReceiverProfile, VolunteerProfile
 from app.models.user import User
 from app.services.audit_service import ClientInfo, record
+from app.services import notification_service as notes
 
 CONTACTS_VISIBLE = {AssignmentStatus.ACCEPTED, AssignmentStatus.EN_ROUTE_PICKUP, AssignmentStatus.COLLECTED,
                     AssignmentStatus.EN_ROUTE_DROPOFF, AssignmentStatus.DELIVERED}
@@ -279,12 +280,19 @@ def assign(db: Session, admin: User, task_id: uuid.UUID, volunteer_id: uuid.UUID
         raise AppError(409, "TASK_ALREADY_STARTED", f"A '{task.status.value}' task can't be reassigned.")
     before = {"status": task.status.value, "volunteer_id": str(task.volunteer_id) if task.volunteer_id else None}
     if task.status != AssignmentStatus.OPEN:  # reassign: close the old task, open a new one
+        if task.volunteer is not None:
+            notes.notify(db, [task.volunteer.user_id], "assignment_update", "Delivery task reassigned",
+                         f"The delivery of {task.collection.listing.food_name} was given to another volunteer.",
+                         "assignment", task.id)
         _history(db, task, AssignmentStatus.CANCELLED, admin.id, "reassigned by an administrator")
         db.flush()
         task = create_open(db, task.collection, admin.id)
     task.volunteer_id = volunteer.id
     task.assigned_by = admin.id
     _history(db, task, AssignmentStatus.ASSIGNED, admin.id, f"assigned to {volunteer.user.full_name}")
+    notes.notify(db, [volunteer.user_id], "assignment_update", "New delivery task",
+                 f"Please deliver {task.collection.listing.food_name} from {task.pickup_address}. "
+                 "Open the task to accept or decline it.", "assignment", task.id)
     record(db, actor=admin, action="assignment.assign", entity_type="volunteer_assignment", entity_id=task.id,
            client=client, before=before, after={"status": "assigned", "volunteer_id": str(volunteer.id)})
     try:
@@ -303,6 +311,10 @@ def cancel(db: Session, admin: User, task_id: uuid.UUID, reason: str, client: Cl
         raise AppError(409, "VOLUNTEER_HAS_THE_FOOD", "A volunteer already has the food; report a failure instead.")
     _history(db, task, AssignmentStatus.CANCELLED, admin.id, reason)
     task.collection.method = CollectionMethod.SELF_PICKUP
+    if task.volunteer is not None:
+        notes.notify(db, [task.volunteer.user_id], "assignment_update", "Delivery task cancelled",
+                     f"The delivery of {task.collection.listing.food_name} is no longer needed: {reason}",
+                     "assignment", task.id)
     record(db, actor=admin, action="assignment.cancel", entity_type="volunteer_assignment", entity_id=task.id,
            client=client, reason=reason)
     db.commit()

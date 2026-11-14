@@ -116,6 +116,14 @@ This file records decisions taken during development and any questions that are 
 | D95 | 2026-11-14 | Admins can assign, reassign (only before the pickup starts: the old task is cancelled and a new one created) or cancel (the collection becomes a self pickup); all audited | Spec 4.4.8 "assign volunteers, change assignments" |
 | D96 | 2026-11-14 | No live GPS tracking of volunteers | Plan 1.5 out of scope: status updates only |
 
+| D97 | 2026-11-14 | Notifications are written by one helper (`notification_service.notify`) **inside the same database transaction** as the event; if the event fails and rolls back, no notification is left behind | No "you were approved" message for an approval that never happened |
+| D98 | 2026-11-14 | In-app notifications only for now; push notifications (Expo, plan M1) arrive with the mobile app. Each row already has `push_status` (`not_sent`) and each category a `default_push` flag | Push needs device tokens from the app |
+| D99 | 2026-11-14 | 11 seeded categories; an admin can switch a category off (then nothing of that kind is sent). Users can't mute categories yet | Spec 4.4: admin controls; per-user settings can follow with the apps |
+| D100 | 2026-11-14 | A new listing notifies only its **top 5** matched receivers, once each (`notified_at`); refreshing matches never repeats it | Spec 4.2.6 "relevant listings" without spamming everyone |
+| D101 | 2026-11-14 | Urgency alerts go to the provider only when a listing **becomes** critical or expires, not on every scan | The scan runs every 5 minutes |
+| D102 | 2026-11-14 | Admins are alerted on new registrations, verification documents and failed collections; announcements are audited and go to everyone, one role, or chosen active users | Spec 4.4 "send announcements" |
+| D103 | 2026-11-14 | Each notification stores the related record (`entity_type`, `entity_id`); the API turns it into a `link` such as `/requests/{id}` for the apps to open | Both apps use the same links |
+
 ## Known evaluation item
 
 - With the default weights, a receiver 33 km away **with a van and enough capacity** scored above one 5.9 km away without transport (0.68 vs 0.58), because exp(-km/5) falls steeply. Behaving as designed, but possibly not what people expect. Check against the hand-labelled evaluation set (plan 7.4) in the AI stage and tune the weights / distance curve there.

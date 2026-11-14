@@ -97,7 +97,7 @@ def test_db_engine() -> Iterator[Engine]:
 # Tables filled by migrations with starting data (categories). They are NOT emptied
 # between tests; tests must not change them (or must undo their changes).
 SEEDED_TABLES = {"provider_categories", "receiver_categories", "food_categories", "verification_requirements",
-                 "urgency_rules"}
+                 "urgency_rules", "notification_categories"}
 
 
 @pytest.fixture(autouse=True)

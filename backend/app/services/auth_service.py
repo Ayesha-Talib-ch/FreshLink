@@ -16,6 +16,7 @@ from app.domain.enums import AccountStatus, UserRole, VerificationStatus
 from app.domain.validation import normalize_phone
 from app.models.user import User
 from app.services.token_service import revoke_all_for_user
+from app.services import notification_service as notes
 
 
 def _invalid_credentials() -> AppError:
@@ -64,7 +65,11 @@ def register_user(
         # using role features (Technical Plan section 5.2).
         verification_status=VerificationStatus.NOT_SUBMITTED,
     )
-    return _insert_user(db, user)
+    user = _insert_user(db, user)
+    notes.notify(db, notes.admin_ids(db), "admin_alert", "New registration",
+                 f"{user.full_name} registered as a {user.role.value}.", "user", user.id)
+    db.commit()
+    return user
 
 
 def create_admin(db: Session, *, email: str, phone: str, full_name: str, password: str) -> User:

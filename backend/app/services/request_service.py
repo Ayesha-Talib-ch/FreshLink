@@ -35,6 +35,7 @@ from app.models.user import User
 from app.schemas.requests import RequestIn, RequestUpdateIn
 from app.services import urgency_service
 from app.services.audit_service import ClientInfo, record
+from app.services import notification_service as notes
 
 
 def _now() -> datetime:
@@ -134,6 +135,9 @@ def create(db: Session, user: User, body: RequestIn) -> FoodRequest:
     from app.services.matching_service import record_outcome
 
     record_outcome(db, listing.id, profile.id, MatchOutcome.REQUESTED)
+    notes.notify(db, [listing.provider.user_id], "request_new", "New food request",
+                 f"{profile.receiver_name} asked for {format_quantity(request.requested_quantity, listing.unit)} "
+                 f"of {listing.food_name}.", "request", request.id)
     db.commit()
     db.refresh(request)
     return _with_distance([request])[0]
@@ -167,6 +171,9 @@ def cancel(db: Session, user: User, request_id: uuid.UUID, reason: str | None) -
     _history(db, request, request.status, RequestStatus.CANCELLED, user.id, (reason or "").strip() or None)
     request.status = RequestStatus.CANCELLED
     request.version += 1
+    notes.notify(db, [request.listing.provider.user_id], "request_update", "Request cancelled",
+                 f"{request.receiver.receiver_name} cancelled their request for {request.listing.food_name}.",
+                 "request", request.id)
     db.commit()
     db.refresh(request)
     return _with_distance([request])[0]
@@ -186,6 +193,8 @@ def reject(db: Session, user: User, request_id: uuid.UUID, reason: str, client: 
     request.rejection_reason = reason
     request.responded_at = _now()
     request.version += 1
+    notes.notify(db, [request.receiver.user_id], "request_decision", "Request not approved",
+                 f"Your request for {request.listing.food_name} was not approved: {reason}", "request", request.id)
     if user.role == UserRole.ADMIN:  # administrator interventions are audited (spec 4.4.6)
         record(db, actor=user, action="request.reject", entity_type="food_request", entity_id=request.id,
                client=client, reason=reason, before={"status": "pending"}, after={"status": "rejected"})
@@ -205,6 +214,8 @@ def expire_pending_for_listing(db: Session, listing: FoodListing, changed_by: uu
         request.status = RequestStatus.EXPIRED
         request.responded_at = _now()
         request.version += 1
+        notes.notify(db, [request.receiver.user_id], "request_update", "Food no longer available",
+                     f"{listing.food_name} is no longer available, so your request has ended.", "request", request.id)
     return len(pending)
 
 

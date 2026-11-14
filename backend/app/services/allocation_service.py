@@ -43,6 +43,7 @@ from app.models.request import FoodRequest, RequestStatusHistory
 from app.models.user import User
 from app.services import collection_service, urgency_service
 from app.services.audit_service import ClientInfo, record
+from app.services import notification_service as notes
 
 OPEN_FOR_ALLOCATION = (ListingStatus.ACTIVE, ListingStatus.PAUSED)
 
@@ -234,6 +235,14 @@ def confirm(db: Session, user: User, run_id: uuid.UUID, overrides: dict[uuid.UUI
         check_request_transition(request.status, new_status)
         db.add(RequestStatusHistory(request_id=request.id, from_status=request.status.value,
                                     to_status=new_status.value, changed_by=user.id, reason=note))
+        if approved > 0:
+            notes.notify(db, [request.receiver.user_id], "request_decision",
+                         "Request approved" if new_status == RequestStatus.APPROVED else "Request partly approved",
+                         f"You will receive {format_quantity(approved, listing.unit)} of {listing.food_name}. "
+                         "Open the collection for pickup details.", "request", request.id)
+        else:
+            notes.notify(db, [request.receiver.user_id], "request_decision", "Request not approved",
+                         f"Your request for {listing.food_name} could not be met. {note}", "request", request.id)
         request.status = new_status
         request.responded_at = now
         request.version += 1
@@ -318,6 +327,8 @@ def cancel_allocation(db: Session, user: User, allocation_id: uuid.UUID, reason:
 
     allocation.status = AllocationStatus.CANCELLED
     allocation.cancelled_reason = reason
+    notes.notify(db, [allocation.receiver.user_id], "allocation_update", "Allocation cancelled",
+                 f"Your allocation of {listing.food_name} was cancelled: {reason}", "request", allocation.request_id)
     listing.allocated_quantity -= allocation.approved_quantity  # the food is available again
     listing.version += 1
     if listing.status == ListingStatus.FULLY_ALLOCATED and listing.remaining_quantity > 0:

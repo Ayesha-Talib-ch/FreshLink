@@ -27,6 +27,7 @@ from app.domain.enums import (
     UserRole,
     VerificationStatus,
 )
+from app.domain.formatting import format_quantity
 from app.engines.geo import haversine_km, haversine_km_sql
 from app.engines.matching import (
     MODEL_VERSION,
@@ -45,6 +46,7 @@ from app.models.profiles import ReceiverProfile
 from app.models.request import FoodRequest
 from app.models.user import User
 from app.services import browse_service, urgency_service
+from app.services import notification_service as notes
 
 RECENT_DAYS = 30
 
@@ -140,6 +142,27 @@ def matches_for_listing(db: Session, user: User, listing_id: uuid.UUID) -> dict[
         "excluded": [{"reason": e.reason, "receiver": _receiver_card(*found[e.receiver_id])}
                      for e in result.excluded],
     }
+
+
+TOP_K_TO_NOTIFY = 5
+
+
+def notify_top_matches(db: Session, listing: FoodListing, k: int = TOP_K_TO_NOTIFY) -> int:
+    """Spec 4.2.6 "new relevant food listings": tell the best-matching receivers (plan H6, job 1).
+    Each receiver is told about a listing only once (notified_at). The caller commits."""
+    rows = db.scalars(select(MatchRecommendation).where(
+        MatchRecommendation.listing_id == listing.id, MatchRecommendation.notified_at.is_(None))
+        .order_by(MatchRecommendation.rank).limit(k)).all()
+    profiles = {p.id: p for p in db.scalars(select(ReceiverProfile).where(
+        ReceiverProfile.id.in_([r.receiver_id for r in rows])))}
+    now = datetime.now(UTC)
+    for row in rows:
+        reasons = " · ".join(row.reasons[:3])
+        notes.notify(db, [profiles[row.receiver_id].user_id], "listing_match", "Food you may need",
+                     f"{listing.food_name} ({format_quantity(listing.remaining_quantity, listing.unit)}): {reasons}",
+                     "listing", listing.id)
+        row.notified_at = now
+    return len(rows)
 
 
 def refresh(db: Session, listing: FoodListing) -> int:

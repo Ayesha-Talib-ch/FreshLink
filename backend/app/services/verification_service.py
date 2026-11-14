@@ -24,6 +24,7 @@ from app.models.profiles import ProviderProfile, ReceiverProfile, VolunteerProfi
 from app.models.user import User
 from app.models.verification import StoredFile, VerificationDocument, VerificationRequest, VerificationRequirement
 from app.schemas.verification import VerificationSubmitIn
+from app.services import notification_service
 from app.services.audit_service import ClientInfo, record
 
 PROFILE_MODELS = {
@@ -122,6 +123,10 @@ def submit(db: Session, user: User, body: VerificationSubmitIn) -> VerificationR
     db.add(request)
     user.verification_status = VerificationStatus.PENDING
     try:
+        db.flush()  # the request's id is needed for the notification link
+        notification_service.notify(db, notification_service.admin_ids(db), "admin_alert", "Documents to review",
+                                    f"{user.full_name} ({user.role.value}) submitted verification documents.",
+                                    "verification_request", request.id)
         db.commit()
     except IntegrityError as exc:
         # Two submissions at the same moment: the partial unique index allows one.
@@ -193,6 +198,7 @@ _DECISIONS = {
 def decide(
     db: Session, admin: User, request_id: uuid.UUID, decision: str, notes: str | None, client: ClientInfo
 ) -> VerificationRequest:
+    notes_text = notes or ""
     # Lock the request row: if two admins click at the same moment, the second
     # one waits, then sees it's no longer pending and gets a 409.
     request = db.scalar(select(VerificationRequest).where(VerificationRequest.id == request_id).with_for_update(of=VerificationRequest))
@@ -210,6 +216,12 @@ def decide(
     request.reviewed_at = datetime.now(UTC)
     request.review_notes = notes
     user.verification_status = user_status
+    titles = {"approve": "Account approved", "reject": "Account not approved",
+              "request_info": "More information needed"}
+    messages = {"approve": "Your FreshLink account is approved. You can now use all features.",
+                "reject": f"Your verification was not approved: {notes_text}",
+                "request_info": f"An administrator needs more information: {notes_text}"}
+    notification_service.notify(db, [user.id], "verification_result", titles[decision], messages[decision], "verification", None)
     record(db, actor=admin, action=f"verification.{decision}", entity_type="user", entity_id=user.id,
            client=client, reason=notes, before=before,
            after={"verification_status": user_status.value, "verification_request_id": str(request.id)})

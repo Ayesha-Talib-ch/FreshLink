@@ -24,6 +24,7 @@ from app.models.user import User
 from app.models.verification import StoredFile
 from app.schemas.listings import ListingIn
 from app.services import matching_service, request_service, urgency_service
+from app.services import notification_service as notes
 
 # How far ahead a listing may be scheduled. Surplus food is short-lived; a date in
 # 2099 is almost certainly a typo.
@@ -130,6 +131,8 @@ def create(db: Session, user: User, body: ListingIn) -> FoodListing:
     _history(db, listing, None, ListingStatus.ACTIVE, user, "created")
     _store_urgency(db, listing)
     matching_service.refresh(db, listing)  # "automatic on publish" (plan 4.6)
+    db.flush()
+    matching_service.notify_top_matches(db, listing)
     db.commit()
     db.refresh(listing)
     return _with_urgency(db, listing)
