@@ -41,7 +41,7 @@ from app.models.listing import FoodListing, ListingStatusHistory
 from app.models.profiles import ProviderProfile, ReceiverProfile
 from app.models.request import FoodRequest, RequestStatusHistory
 from app.models.user import User
-from app.services import urgency_service
+from app.services import collection_service, urgency_service
 from app.services.audit_service import ClientInfo, record
 
 OPEN_FOR_ALLOCATION = (ListingStatus.ACTIVE, ListingStatus.PAUSED)
@@ -219,10 +219,13 @@ def confirm(db: Session, user: User, run_id: uuid.UUID, overrides: dict[uuid.UUI
         if approved > 0:
             new_status = (RequestStatus.APPROVED if approved == request.requested_quantity
                           else RequestStatus.PARTIALLY_APPROVED)
-            db.add(Allocation(run_id=run.id, listing_id=listing.id, request_id=request.id,
-                              receiver_id=request.receiver_id, suggested_quantity=line.suggested_quantity,
-                              approved_quantity=approved, decision_reason=line.explanation,
-                              override_reason=reason, confirmed_by=user.id))
+            allocation = Allocation(run_id=run.id, listing_id=listing.id, request_id=request.id,
+                                    receiver_id=request.receiver_id, suggested_quantity=line.suggested_quantity,
+                                    approved_quantity=approved, decision_reason=line.explanation,
+                                    override_reason=reason, confirmed_by=user.id)
+            db.add(allocation)
+            # Every confirmed allocation gets its collection record (pickup or volunteer delivery).
+            collection_service.create_for_allocation(db, allocation, request)
             note = reason or line.explanation
         else:
             new_status = RequestStatus.REJECTED
@@ -311,6 +314,7 @@ def cancel_allocation(db: Session, user: User, allocation_id: uuid.UUID, reason:
                        f"A '{allocation.status.value}' allocation can't be cancelled.")
     request = db.get(FoodRequest, allocation.request_id)
     check_request_transition(request.status, RequestStatus.CANCELLED)
+    collection_service.cancel_with_allocation(db, allocation)  # refuses if already handed over
 
     allocation.status = AllocationStatus.CANCELLED
     allocation.cancelled_reason = reason

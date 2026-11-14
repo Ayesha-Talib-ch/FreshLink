@@ -5,6 +5,7 @@ Later stages add requests, allocations, collections and assignments here.
 """
 
 from app.core.errors import AppError
+from app.domain.enums import CollectionStatus as C
 from app.domain.enums import ListingStatus as L
 from app.domain.enums import RequestStatus as R
 
@@ -49,5 +50,24 @@ def check_request_transition(current: R, target: R) -> None:
         raise AppError(
             409, "INVALID_STATUS_TRANSITION",
             f"A request that is '{current.value}' can't be changed to '{target.value}'.",
+            {"current_status": current.value, "requested_status": target.value},
+        )
+
+
+# -------------------------------------------------------------------- collections
+COLLECTION_TRANSITIONS: dict[C, set[C]] = {
+    C.SCHEDULED: {C.HANDED_OVER, C.FAILED, C.CANCELLED},
+    C.HANDED_OVER: {C.RECEIVED, C.FAILED},
+    C.RECEIVED: set(),
+    C.FAILED: set(),
+    C.CANCELLED: set(),
+}
+
+
+def check_collection_transition(current: C, target: C) -> None:
+    if target not in COLLECTION_TRANSITIONS.get(current, set()):
+        raise AppError(
+            409, "INVALID_STATUS_TRANSITION",
+            f"A collection that is '{current.value}' can't be changed to '{target.value}'.",
             {"current_status": current.value, "requested_status": target.value},
         )

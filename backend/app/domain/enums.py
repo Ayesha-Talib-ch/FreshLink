@@ -171,3 +171,16 @@ class MatchOutcome(StrEnum):
     NONE = "none"
     REQUESTED = "requested"  # the receiver requested this listing
     COMPLETED = "completed"  # the food was received (collection stage)
+
+
+class CollectionMethod(StrEnum):
+    SELF_PICKUP = "self_pickup"  # the receiver collects from the provider
+    VOLUNTEER = "volunteer"  # a volunteer delivers it (volunteer stage)
+
+
+class CollectionStatus(StrEnum):
+    SCHEDULED = "scheduled"  # waiting for the handover
+    HANDED_OVER = "handed_over"  # the provider gave the food out
+    RECEIVED = "received"  # the receiver confirmed receipt: redistribution complete
+    FAILED = "failed"  # it didn't happen (with a reason)
+    CANCELLED = "cancelled"  # the allocation was cancelled

@@ -96,6 +96,16 @@ This file records decisions taken during development and any questions that are 
 | D77 | 2026-11-14 | "Recommended for you" scores available listings for one receiver; fairness is neutral there (it compares receivers with each other); already-requested food is left out | Plan issue H6, job 2 |
 | D78 | 2026-11-14 | Notifying the top-K matched receivers (`POST /listings/{id}/matches/notify`) is deferred to the notifications stage | Needs the notifications table and dispatcher |
 
+| D79 | 2026-11-14 | Stage 6 split: 6a collections, 6b volunteer assignments | Keeps each stage small |
+| D80 | 2026-11-14 | One collection per allocation, created when the allocation is confirmed; method from the request's preference; works without any volunteer | Plan issue M9 (the spec schema required an assignment) |
+| D81 | 2026-11-14 | Quantities kept separately: approved (allocation) → handed over (provider confirms, ≤ approved) → received (receiver confirms, ≤ handed over; DB CHECK) | Spec 14.3: listed, allocated and collected/delivered must not be interchangeable (plan 3.5) |
+| D82 | 2026-11-14 | Receipt completes the redistribution: request `completed`, allocation `completed`, match outcome `completed` | Spec 5.7 "Receiver Confirms Quantity → Redistribution Completed"; the outcome is an ML label |
+| D83 | 2026-11-14 | Only the provider (or an admin) confirms handover; only the receiver (or an admin **with a reason**, audited) confirms receipt | Plan 5.4 permission matrix |
+| D84 | 2026-11-14 | A failed collection: the request is cancelled with the reason; if the food hadn't left the provider, its quantity returns to the listing (which reactivates if its deadline hasn't passed); always audited | Food is never silently lost |
+| D85 | 2026-11-14 | Provider and receiver contact details (phone, address, contact person) are shown to both sides on the collection | Spec 15: contact details shared within an authorized transaction |
+| D86 | 2026-11-14 | An allocation can only be cancelled before the handover; afterwards, report a failed collection | The food has physically left the provider |
+| D87 | 2026-11-14 | A general "report a problem" (issue reports, plan 4.8) is deferred to the admin stage; collection problems use "fail" with a reason | Issues need the admin review screens |
+
 ## Known evaluation item
 
 - With the default weights, a receiver 33 km away **with a van and enough capacity** scored above one 5.9 km away without transport (0.68 vs 0.58), because exp(-km/5) falls steeply. Behaving as designed, but possibly not what people expect. Check against the hand-labelled evaluation set (plan 7.4) in the AI stage and tune the weights / distance curve there.

@@ -1,9 +1,9 @@
-# FreshLink — Manual Testing Guide (Stages 0–5b)
+# FreshLink — Manual Testing Guide (Stages 0–6a)
 
-This guide tests **every API built so far (69 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (75 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
-- **Time needed:** about 140 minutes
+- **Time needed:** about 150 minutes
 - **You need:** any small real PDF, JPG or PNG file on your computer (for section 10.4)
 - **Tick each box** as you go. If a result differs, copy the response and send it to the team.
 - All test accounts use emails starting with `guide.` so they're easy to delete afterwards (section 11).
@@ -550,13 +550,32 @@ NGO 20 packages, kitchen 10 packages, family 10 packages. As the provider, creat
 
 💡 Viva note: this is **not machine learning**. It's an explainable scoring formula (plan 7.4, v1). The stored outcomes are the data a learned version (v2) would be trained and evaluated on.
 
+
+### 10.11 Collection: handover and receipt (Stage 6a)
+
+Continue with the listing L4 from 10.9, where the NGO and the kitchen have approved allocations.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Provider: `GET /api/v1/collections` | one `scheduled` collection per approved allocation. 📋 copy the NGO's collection `id` as **C1** |
+| ☐ | NGO: `GET /api/v1/collections/{collection_id}` (C1) | the **provider's** phone, contact person and pickup address are shown: allowed inside this transaction |
+| ☐ | NGO: `PATCH /api/v1/collections/{collection_id}` (C1) with `{"scheduled_pickup_at": "<a time inside the pickup window, +05:00>"}` | **200**, `version` 2 |
+| ☐ | NGO: `POST .../handover` with `{"quantity": 15}` | **403** (only the provider confirms the handover) |
+| ☐ | Provider: `POST .../handover` with `{"quantity": 16}` | **422** `QUANTITY_TOO_HIGH` (more than approved) |
+| ☐ | Provider: `POST .../handover` with `{"quantity": 15, "notes": "3 crates"}` | **200** `handed_over` |
+| ☐ | NGO: `POST .../receipt` with `{"quantity": 16}` | **422** `QUANTITY_TOO_HIGH` (more than handed over) |
+| ☐ | NGO: `POST .../receipt` with `{"quantity": 14, "notes": "1 package damaged"}` | **200** `received`: approved 15, handed over 15, received **14** (kept separately) |
+| ☐ | NGO: `GET /api/v1/requests/{request_id}` (its request) | `completed`; the history ends with *received 14 packages* |
+| ☐ | Kitchen: `POST /api/v1/collections/{collection_id}/fail` (its collection) with `{"reason": "Our van broke down"}` | **200** `failed`; the listing's `remaining_quantity` grows again (the food never left the provider) |
+
 ---
 
 ## 11. Clean up the test accounts
 
-This deletes only the `guide.` accounts. Allocations, suggestions, requests and then listings must be deleted first (the database protects history: a receiver with requests, or a provider with listings, can't simply be deleted); profiles, sessions and listing history then go automatically (ON DELETE CASCADE).
+This deletes only the `guide.` accounts. Collections, allocations, suggestions, requests and then listings must be deleted first (the database protects history: a receiver with requests, or a provider with listings, can't simply be deleted); profiles, sessions and listing history then go automatically (ON DELETE CASCADE).
 
 ```powershell
+docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM collections WHERE allocation_id IN (SELECT a.id FROM allocations a JOIN receiver_profiles r ON r.id = a.receiver_id JOIN users u ON u.id = r.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM allocations WHERE receiver_id IN (SELECT r.id FROM receiver_profiles r JOIN users u ON u.id = r.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM allocation_runs WHERE listing_id IN (SELECT l.id FROM food_listings l JOIN provider_profiles p ON p.id = l.provider_id JOIN users u ON u.id = p.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM food_requests WHERE receiver_id IN (SELECT r.id FROM receiver_profiles r JOIN users u ON u.id = r.user_id WHERE u.email LIKE 'guide.%');"

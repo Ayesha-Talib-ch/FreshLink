@@ -22,7 +22,8 @@ Development started. Each stage is added and tested one at a time.
 | 4b. Food requests: create (eligibility, availability, quantity and capacity checks), role-scoped lists, edit / cancel, provider reject with reason, incoming requests per listing, requests expire when a listing ends | Done |
 | 5a. Allocation: explainable suggestions (priority-weighted / proportional-fair / first-come) with reproducible snapshots, confirm with overrides + reasons in one locked transaction, approve shortcut, cancel; spec example gives 15 / 10 / 5 | Done |
 | 5b. Matching v1 (explainable heuristic): ranked receivers with score parts and reasons, explained exclusions, "Recommended for you", match scores on incoming requests, stored snapshots with outcomes | Done |
-| 6. Collection and volunteers: handover, receipt, volunteer assignments and status tracking | Next |
+| 6a. Collections: created on allocation, schedule (method/time), provider handover, receiver receipt (completes the redistribution), failure with food returned, contacts shared within the transaction | Done |
+| 6b. Volunteer assignments: open tasks, claim / accept / decline, delivery status steps, admin assign with suggested volunteers | Next |
 
 There's no website or mobile UI yet.
 
