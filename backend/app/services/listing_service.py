@@ -25,10 +25,10 @@ from app.models.verification import StoredFile
 from app.schemas.listings import ListingIn
 from app.services import matching_service, request_service, urgency_service
 from app.services import notification_service as notes
+from app.services import settings_service
 
 # How far ahead a listing may be scheduled. Surplus food is short-lived; a date in
 # 2099 is almost certainly a typo.
-MAX_DAYS_AHEAD = 30
 # Small allowance for phone clocks that are a few minutes fast.
 CLOCK_TOLERANCE = timedelta(minutes=5)
 
@@ -74,8 +74,9 @@ def _validate(db: Session, provider: ProviderProfile, body: ListingIn, now: date
 
     if body.collection_deadline <= now:
         raise _field_error("DATE_ALREADY_PASSED", "The collection deadline has already passed.", "collection_deadline")
-    if body.collection_deadline > now + timedelta(days=MAX_DAYS_AHEAD):
-        raise _field_error("DATE_TOO_FAR", f"Listings can be scheduled at most {MAX_DAYS_AHEAD} days ahead.",
+    max_days = settings_service.get(db, "listing_max_days_ahead")
+    if body.collection_deadline > now + timedelta(days=max_days):
+        raise _field_error("DATE_TOO_FAR", f"Listings can be scheduled at most {max_days} days ahead.",
                            "collection_deadline")
     if body.expiry_at is not None and body.collection_deadline > body.expiry_at:
         raise _field_error("DEADLINE_AFTER_EXPIRY",

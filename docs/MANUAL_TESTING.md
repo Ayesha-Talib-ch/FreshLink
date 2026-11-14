@@ -1,6 +1,6 @@
 # FreshLink — Manual Testing Guide (Stages 0–6b)
 
-This guide tests **every API built so far (125 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (143 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
 - **Time needed:** about 165 minutes
@@ -676,6 +676,22 @@ Everything you did in this guide is now report data. Log in as the admin.
 | ☐ | Same with `format=pdf` | a PDF titled "FreshLink - Summary" with the filters and a table |
 | ☐ | `GET /api/v1/admin/audit-logs?action=report.` | your two exports (`report.export`), newest first |
 | ☐ | As the provider: `GET /api/v1/admin/reports/summary` | **403** |
+
+
+### 10.17 System management: categories, documents, settings (Stage 8d)
+
+Log in as the admin. **Undo what you change here at the end** (the last rows show how).
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `GET /api/v1/admin/settings` | five settings, all `"is_default": true` |
+| ☐ | `PUT /api/v1/admin/settings/matching_weights` with `{"value": {"distance": 0.9, "capacity_fit": 0.2, "collection_fit": 0.15, "urgency_feasibility": 0.15, "category_priority": 0.1, "fairness": 0.1}}` | **422** `INVALID_SETTING`: *"The weights must add up to 1 (they add up to 1.600)."* |
+| ☐ | `PUT /api/v1/admin/settings/match_notify_top_k` with `{"value": 0}` | **200** `"is_default": false`; a new listing now notifies nobody |
+| ☐ | `PUT /api/v1/admin/settings/listing_max_days_ahead` with `{"value": 1}`; as the provider create a listing 3 days ahead | **422** *"Listings can be scheduled at most 1 days ahead."* |
+| ☐ | `POST /api/v1/admin/food-categories` with `{"code": "guide_sweets", "name": "Sweets", "perishability_class": "bakery"}` | **201** with `"in_use": 0`; it appears in `GET /api/v1/lookups/food-categories` and in `GET /api/v1/admin/urgency-rules` |
+| ☐ | `DELETE /api/v1/admin/food-categories/{category_id}` with the **Bakery items** id | **409** `CATEGORY_IN_USE` (listings use it) |
+| ☐ | `POST /api/v1/admin/verification-requirements` with `{"role": "volunteer", "receiver_category_id": "<any id>", "document_type": "guide_doc", "name": "Test"}` | **422** `CATEGORY_ONLY_FOR_RECEIVERS` |
+| ☐ | **Undo:** `DELETE /api/v1/admin/settings/match_notify_top_k` and `.../listing_max_days_ahead`; `DELETE /api/v1/admin/food-categories/{id}` (Sweets) | settings back to default; **204** |
 
 
 ---

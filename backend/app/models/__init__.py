@@ -13,6 +13,7 @@ from app.models.issue import IssueReport
 from app.models.listing import FoodListing, ListingStatusHistory
 from app.models.matching import MatchRecommendation
 from app.models.notification import Announcement, Notification, NotificationCategory
+from app.models.setting import PlatformSetting
 from app.models.profiles import (
     ProviderProfile,
     ReceiverFoodPreference,
@@ -47,6 +48,7 @@ __all__ = [
     "MatchRecommendation",
     "Notification",
     "NotificationCategory",
+    "PlatformSetting",
     "ProviderCategory",
     "ProviderProfile",
     "ReceiverCategory",

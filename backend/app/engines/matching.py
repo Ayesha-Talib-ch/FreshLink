@@ -91,14 +91,14 @@ class MatchResult:
     model_version: str = MODEL_VERSION
 
 
-def _exclusion(r: ReceiverFacts, listing: ListingFacts) -> str | None:
+def _exclusion(r: ReceiverFacts, listing: ListingFacts, max_travel_km: float) -> str | None:
     if not r.can_receive:
         return "Account not verified, not active, or not eligible."
     if r.already_allocated:
         return "Already allocated food from this listing."
     if not r.accepts_category:
         return f"Doesn't accept {listing.food_category_name} (not in their food preferences)."
-    if r.distance_km > r.pickup_radius_km and not (r.has_own_transport and r.distance_km <= PLATFORM_MAX_RADIUS_KM):
+    if r.distance_km > r.pickup_radius_km and not (r.has_own_transport and r.distance_km <= max_travel_km):
         return (f"{r.distance_km:.1f} km away, outside their {r.pickup_radius_km:g} km pickup radius "
                 "and no own transport.")
     return None
@@ -136,17 +136,20 @@ def _reasons(r: ReceiverFacts, listing: ListingFacts, c: dict[str, float], most_
     return reasons
 
 
-def rank(listing: ListingFacts, receivers: list[ReceiverFacts], max_weight: Decimal) -> MatchResult:
+def rank(listing: ListingFacts, receivers: list[ReceiverFacts], max_weight: Decimal,
+         weights: dict[str, float] | None = None, max_travel_km: float = PLATFORM_MAX_RADIUS_KM) -> MatchResult:
+    """weights / max_travel_km: the admin's platform settings (defaults: WEIGHTS / PLATFORM_MAX_RADIUS_KM)."""
+    weights = weights or WEIGHTS
     excluded, eligible = [], []
     for r in receivers:
-        reason = _exclusion(r, listing)
+        reason = _exclusion(r, listing, max_travel_km)
         (excluded.append(Exclusion(r.receiver_id, reason)) if reason else eligible.append(r))
 
     most_recent = max((r.recent_allocations for r in eligible), default=0)
     scored = []
     for r in eligible:
         c = _components(r, listing, max_weight, most_recent)
-        score = sum(WEIGHTS[name] * value for name, value in c.items())
+        score = sum(weights[name] * value for name, value in c.items())
         scored.append((r, round(score, 4), {k: round(v, 4) for k, v in c.items()}))
     # Highest score first; nearer receiver first on a tie (then a stable id order).
     scored.sort(key=lambda item: (-item[1], item[0].distance_km, str(item[0].receiver_id)))

@@ -28,7 +28,8 @@ Development started. Each stage is added and tested one at a time.
 | 8a. Dashboards for all four roles (`/me/dashboard`), the admin dashboard (the spec's 15 metrics, quantities per unit) and activity feed; admin user management: search / filter / view, activate / deactivate / suspend with reasons (sessions end at once, a suspended provider's food is hidden), account history, super admins create admins | Done |
 | 8b. Admin listings monitor with date warnings; listing moderation (suspend / reinstate / close / remove, with reasons); volunteer overview (load, completion rate); allocation-run monitor (suggested vs approved, overrides); problem reports for every role, reviewed and resolved by admins | Done |
 | 8c. Reports (summary, weekly / monthly trends, categories, providers, receivers, volunteers) with the spec's filters; CSV and PDF export; fairness report (fill ratio per receiver category, Gini per unit, override rate); audit-log viewer | Done |
-| 8d. System management: food / provider / receiver categories, verification requirements, platform settings | Next |
+| 8d. System management: food / provider / receiver categories (add, edit, deactivate, delete if unused), verification requirements, platform settings that change real behaviour (matching weights, travel limit, default allocation policy, match notifications, days ahead), all audited | Done |
+| 9. Background worker (scheduled urgency scan and clean-ups), then the AI / ML stage | Next |
 
 There's no website or mobile UI yet.
 

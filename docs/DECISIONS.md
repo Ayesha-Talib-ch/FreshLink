@@ -144,10 +144,17 @@ This file records decisions taken during development and any questions that are 
 | D122 | 2026-11-14 | Fairness: average fill ratio per receiver category (unit-free: 0 = rejected, 1 = in full), Gini of received quantity per unit across everyone who requested (0 = equal), and the override rate. Shown as information, never as a judgement of a receiver | Plan 4.12 / 7.5 |
 | D123 | 2026-11-14 | Exports: CSV (UTF-8 with BOM so Excel shows Urdu correctly) and PDF via fpdf2 (pure Python, LGPL). The PDF's built-in fonts are Latin-1, so non-Latin letters are replaced there; the CSV keeps them. Every export is audited | Spec 14.3 "CSV or PDF" |
 | D124 | 2026-11-14 | Audit-log viewer: filter by actor email, exact action or a prefix ending in "." (e.g. `listing.`), entity, and dates; read-only (the table itself is append-only) | Spec "all important administrative actions should be recorded" |
+| D125 | 2026-11-14 | Platform settings: only five, and each is read by real code: matching_weights (must add up to 1), max_travel_km_with_transport (5-200), default_allocation_policy, match_notify_top_k (0-50), listing_max_days_ahead (1-90). Bad values are refused with the reason; every change and reset is audited | Spec 4.4.11; no settings that do nothing |
+| D126 | 2026-11-14 | Only changed settings are stored; the defaults live in the code, so an empty table means "all defaults" and resetting deletes the row | Nothing to seed; the code documents every default |
+| D127 | 2026-11-14 | Category codes are fixed once created (the program relies on codes such as `small_business`); names, order, active flag and type fields can change | Renaming must never break a rule |
+| D128 | 2026-11-14 | A category used by any profile, listing or food preference can't be deleted (409 CATEGORY_IN_USE): deactivate it instead, which hides it from forms while old records keep it | History is never broken (FR25) |
+| D129 | 2026-11-14 | A new food category starts with the same urgency thresholds as "other" (48 / 24 / 6 hours); admins adjust them in /admin/urgency-rules | Its listings get urgency levels immediately |
+| D130 | 2026-11-14 | "Allow small business receivers" (plan 3.3) = activate or deactivate the `small_business` receiver category; no separate setting | One switch, not two that could disagree |
+| D131 | 2026-11-14 | Verification requirements: role and document type are fixed once created; name, required/optional and active can change; a receiver requirement can apply to all receivers or one category | Spec 4.4.11 "verification requirements" |
 
 ## Known evaluation item
 
-- With the default weights, a receiver 33 km away **with a van and enough capacity** scored above one 5.9 km away without transport (0.68 vs 0.58), because exp(-km/5) falls steeply. Behaving as designed, but possibly not what people expect. Check against the hand-labelled evaluation set (plan 7.4) in the AI stage and tune the weights / distance curve there.
+- With the default weights, a receiver 33 km away **with a van and enough capacity** scored above one 5.9 km away without transport (0.68 vs 0.58), because exp(-km/5) falls steeply. Behaving as designed, but possibly not what people expect. Check against the hand-labelled evaluation set (plan 7.4) in the AI stage and tune the weights / distance curve there. Since Stage 8d an admin can change the weights without a code change (`PUT /api/v1/admin/settings/matching_weights`).
 
 ## API review after Stage 2a (2026-11-14)
 
@@ -157,7 +164,6 @@ All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 l
 
 - Expired/revoked refresh-token rows are never deleted yet. A clean-up job belongs in the worker process (plan section 2.1, worker stage).
 - Stage 2b must decide what happens when an **approved** user edits key profile details (e.g. business name or category): keep the approval, or send the profile back for review.
-- The "allow small business receivers" platform setting (plan section 3.3) arrives with `platform_settings` in the admin stage; until then the category's `is_active` flag controls it.
 - Uploaded files of deleted users stay on disk (their database rows are deleted). A clean-up job and a document-retention setting (plan issue M7) belong to the worker/admin stages.
 - The worker process (plan section 2.1) must run the urgency scan every 5 minutes; until then run `python -m app.cli urgency-scan` by hand (or with Windows Task Scheduler for demos).
 - When a volunteer is suspended, tasks they already accepted stay with them; the admin reassigns or cancels them (Stage 6b endpoints). An automatic hand-back can come with the admin monitoring screens (8b).

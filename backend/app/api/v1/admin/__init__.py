@@ -2,13 +2,14 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.admin import dashboard, monitoring, notifications, reports, urgency, users, verification
+from app.api.v1.admin import dashboard, monitoring, notifications, reports, system, urgency, users, verification
 
 router = APIRouter(prefix="/admin")
 router.include_router(dashboard.router)
 router.include_router(users.router)
 router.include_router(monitoring.router)
 router.include_router(reports.router)
+router.include_router(system.router)
 router.include_router(verification.router)
 router.include_router(urgency.router)
 router.include_router(notifications.router)

@@ -12,7 +12,8 @@ from app.schemas.requests import RequestListingSummary
 
 
 class AllocationRunIn(BaseModel):
-    policy: Literal["priority_weighted", "proportional_fair", "first_come"] = "priority_weighted"
+    # None = the "default_allocation_policy" platform setting (priority_weighted unless changed)
+    policy: Literal["priority_weighted", "proportional_fair", "first_come"] | None = None
 
 
 class LineChange(BaseModel):
