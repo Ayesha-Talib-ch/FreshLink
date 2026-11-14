@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api.v1.admin import (
     dashboard,
     jobs,
+    ml,
     monitoring,
     notifications,
     reports,
@@ -21,6 +22,7 @@ router.include_router(monitoring.router)
 router.include_router(reports.router)
 router.include_router(system.router)
 router.include_router(jobs.router)
+router.include_router(ml.router)
 router.include_router(verification.router)
 router.include_router(urgency.router)
 router.include_router(notifications.router)

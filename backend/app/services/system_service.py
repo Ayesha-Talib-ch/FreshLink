@@ -20,6 +20,7 @@ from app.core.errors import AppError
 from app.domain.enums import UserRole
 from app.models.category import FoodCategory, ProviderCategory, ReceiverCategory, UrgencyRuleRow
 from app.models.listing import FoodListing
+from app.models.ml import ProviderDailyLog, SurplusPrediction
 from app.models.profiles import ProviderProfile, ReceiverFoodPreference, ReceiverProfile
 from app.models.user import User
 from app.models.verification import VerificationRequirement
@@ -28,7 +29,9 @@ from app.services.audit_service import ClientInfo, record
 # kind -> (model, [(table that refers to it, its foreign-key column)])
 KINDS: dict[str, tuple[type, list[tuple[type, Any]]]] = {
     "food": (FoodCategory, [(FoodListing, FoodListing.food_category_id),
-                            (ReceiverFoodPreference, ReceiverFoodPreference.food_category_id)]),
+                            (ReceiverFoodPreference, ReceiverFoodPreference.food_category_id),
+                            (ProviderDailyLog, ProviderDailyLog.food_category_id),
+                            (SurplusPrediction, SurplusPrediction.food_category_id)]),
     "provider": (ProviderCategory, [(ProviderProfile, ProviderProfile.provider_category_id)]),
     "receiver": (ReceiverCategory, [(ReceiverProfile, ReceiverProfile.receiver_category_id)]),
 }

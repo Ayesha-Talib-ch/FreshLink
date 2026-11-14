@@ -11,7 +11,8 @@ can't overlap with the schedule."""
 import logging
 import signal
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -45,13 +46,15 @@ def release_single_instance_lock(conn: Connection) -> None:
     conn.close()
 
 
-def build_scheduler(engine: Engine, session_factory: sessionmaker, storage: LocalStorage) -> BlockingScheduler:
+def build_scheduler(engine: Engine, session_factory: sessionmaker, storage: LocalStorage,
+                    ml_artifacts: Path | None = None) -> BlockingScheduler:
     scheduler = BlockingScheduler(timezone=UTC)
     for name, job in JOBS.items():
         scheduler.add_job(
             run_job, IntervalTrigger(seconds=job.every_seconds), id=name, name=job.description,
-            args=[engine, session_factory, storage, name, "schedule"],
-            next_run_time=datetime.now(UTC),  # run once at start-up, then on the interval
+            args=[engine, session_factory, storage, name, "schedule"], kwargs={"ml_artifacts": ml_artifacts},
+            # most jobs run once at start-up, then on the interval; weekly retraining waits a week
+            next_run_time=datetime.now(UTC) + (timedelta(0) if job.run_at_start else timedelta(seconds=job.every_seconds)),
             max_instances=1,  # never overlap with itself
             coalesce=True,  # after a sleep / pause, run once, not once per missed interval
             misfire_grace_time=60,
@@ -68,7 +71,8 @@ def main() -> int:
         print("[x] Another FreshLink worker is already running. Only one may run at a time.")
         engine.dispose()
         return 1
-    scheduler = build_scheduler(engine, create_session_factory(engine), LocalStorage(settings.storage_dir))
+    scheduler = build_scheduler(engine, create_session_factory(engine), LocalStorage(settings.storage_dir),
+                                settings.ml_artifacts_dir)
     signal.signal(signal.SIGTERM, lambda *_: scheduler.shutdown(wait=False))
     print("[OK] FreshLink worker started: " + ", ".join(
         f"{name} every {job.every_seconds // 60} min" for name, job in JOBS.items()) + ". Press Ctrl+C to stop.")

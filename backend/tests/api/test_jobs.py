@@ -180,7 +180,8 @@ def test_the_same_job_never_runs_twice_at_once(client: TestClient, runner, test_
 
 def test_admin_job_screens(client: TestClient, admin: dict, scene: dict, db_session: Session) -> None:
     jobs = {j["name"]: j for j in client.get("/api/v1/admin/jobs", headers=admin).json()}
-    assert set(jobs) == {"urgency_scan", "collection_reminders", "token_cleanup", "file_cleanup"}
+    assert set(jobs) == {"urgency_scan", "collection_reminders", "token_cleanup", "file_cleanup", "surplus_retrain"}
+    assert jobs["surplus_retrain"]["every_minutes"] == 7 * 24 * 60
     assert jobs["urgency_scan"]["every_minutes"] == 5 and jobs["urgency_scan"]["last_run"] is None
 
     ran = client.post("/api/v1/admin/jobs/urgency_scan/run", headers=admin)
@@ -206,6 +207,9 @@ def test_scheduler_has_every_job(client: TestClient) -> None:
     assert jobs["urgency_scan"].trigger.interval == timedelta(minutes=5)
     assert jobs["file_cleanup"].trigger.interval == timedelta(days=1)
     assert all(j.max_instances == 1 and j.coalesce for j in jobs.values())
+    # weekly retraining doesn't run at every worker start-up: its first run is a week away
+    assert jobs["surplus_retrain"].next_run_time - datetime.now(UTC) > timedelta(days=6)
+    assert jobs["urgency_scan"].next_run_time - datetime.now(UTC) < timedelta(minutes=1)
 
 
 def test_only_one_worker_may_run(test_db_engine: Engine) -> None:

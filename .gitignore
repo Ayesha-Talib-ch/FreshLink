@@ -33,6 +33,7 @@ backend/storage/
 
 # ---------- ML artifacts (trained models are regenerated, not committed) ----------
 ml/artifacts/
+ml/data/*.csv
 *.joblib
 .ipynb_checkpoints/
 

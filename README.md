@@ -30,7 +30,8 @@ Development started. Each stage is added and tested one at a time.
 | 8c. Reports (summary, weekly / monthly trends, categories, providers, receivers, volunteers) with the spec's filters; CSV and PDF export; fairness report (fill ratio per receiver category, Gini per unit, override rate); audit-log viewer | Done |
 | 8d. System management: food / provider / receiver categories (add, edit, deactivate, delete if unused), verification requirements, platform settings that change real behaviour (matching weights, travel limit, default allocation policy, match notifications, days ahead), all audited | Done |
 | 9. Background worker (`python -m app.worker`, one instance only): urgency scan and pickup reminders every 5 min, daily clean-up of expired sessions and unattached / left-behind files; job history, admin "run now", `python -m app.cli run-job` | Done |
-| 10. AI / ML: surplus estimation model and matching evaluation | Next |
+| 10a. Surplus estimation (machine learning): provider daily logs (API + CSV import), seeded synthetic data with Ramadan / Eid effects, one shared feature builder (7-day gap: no leakage), Ridge / Random Forest / Gradient Boosting chosen by time-series cross-validation, must beat two baselines, 10-90 % range, model registry with safe activation, weekly retraining, estimates with clearly labelled cold-start fallbacks | Done |
+| 10b. Matching evaluation: hand-labelled set, Precision@5 / NDCG@5, learned ranker v2 vs heuristic v1 | Next |
 
 There's no website or mobile UI yet.
 

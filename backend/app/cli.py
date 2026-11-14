@@ -85,7 +85,8 @@ def run_job_command(args: argparse.Namespace) -> int:
     settings = get_settings()
     engine = create_db_engine(settings)
     try:
-        run = run_job(engine, create_session_factory(engine), LocalStorage(settings.storage_dir), args.job, "cli")
+        run = run_job(engine, create_session_factory(engine), LocalStorage(settings.storage_dir), args.job, "cli",
+                      ml_artifacts=settings.ml_artifacts_dir)
     finally:
         engine.dispose()
     if run.status == "success" and args.job == "urgency_scan":  # the Stage 3b wording, used in the guide
@@ -98,6 +99,37 @@ def run_job_command(args: argparse.Namespace) -> int:
         return 0
     print(f"[x] {args.job} {run.status}: {(run.error or '').splitlines()[0] if run.error else ''}")
     return 1
+
+
+def train_surplus_command(args: argparse.Namespace) -> int:
+    """Train the surplus model (plan 7.2) from the synthetic CSV or from the daily logs in the database."""
+    from pathlib import Path
+
+    from app.services import ml_service
+
+    settings = get_settings()
+    engine = create_db_engine(settings)
+    try:
+        with create_session_factory(engine)() as db:
+            if args.csv:
+                series, source = ml_service.series_from_csv(Path(args.csv))
+            else:
+                series, source = ml_service.series_from_db(db)
+            print(f"Training on {len(series)} provider/category histories ({source} data) ...")
+            try:
+                model = ml_service.train_and_register(db, settings.ml_artifacts_dir, series, source,
+                                                      notes=f"CLI: {args.csv or 'database logs'}")
+            except ValueError as exc:
+                print(f"[x] {exc}")
+                return 1
+    finally:
+        engine.dispose()
+    m = model.metrics
+    print(f"[OK] {model.version}: {model.algorithm}, hold-out MAE {m['model']['mae']} "
+          f"(baseline B2 {m['baseline_b2']['mae']}, B1 {m['baseline_b1']['mae']}; "
+          f"{m['improvement_over_b2_pct']} % better than B2), range coverage {m['range_coverage_pct']} %. "
+          f"{m['activation'].capitalize()}.")
+    return 0
 
 
 def urgency_scan_command(args: argparse.Namespace) -> int:
@@ -120,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
     scan.set_defaults(func=urgency_scan_command)
 
     from app.services.job_service import JOBS
+
+    train = sub.add_parser("train-surplus", help="Train the surplus model and register it")
+    train.add_argument("--csv", help="train on this synthetic CSV (ml/data/synthetic_daily_logs.csv) "
+                                     "instead of the database's daily logs")
+    train.set_defaults(func=train_surplus_command)
 
     job = sub.add_parser("run-job", help="Run one background job now: " + ", ".join(JOBS))
     job.add_argument("job", choices=list(JOBS))

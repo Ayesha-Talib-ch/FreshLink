@@ -44,6 +44,7 @@ BEFORE_PICKUP = (AssignmentStatus.ASSIGNED, AssignmentStatus.ACCEPTED, Assignmen
 class JobContext:
     storage: LocalStorage
     now: datetime
+    ml_artifacts: Path | None = None  # where trained models are saved (surplus_retrain)
 
 
 # ===================================================================== the jobs
@@ -120,11 +121,29 @@ def file_cleanup(db: Session, ctx: JobContext) -> dict[str, Any]:
     return {"unattached_uploads_deleted": len(keys), "files_without_record_deleted": left_behind}
 
 
+def surplus_retrain(db: Session, ctx: JobContext) -> dict[str, Any]:
+    """Plan 7.7: retrain the surplus model on all daily logs. The new model goes live only if it beats
+    the baselines and the current model on the same hold-out days (ml_service.train_and_register)."""
+    from app.services import ml_service  # local: scikit-learn is only loaded when this job runs
+
+    if ctx.ml_artifacts is None:
+        raise RuntimeError("No folder for model files was given.")
+    series, source = ml_service.series_from_db(db)
+    try:
+        model = ml_service.train_and_register(db, ctx.ml_artifacts, series, source, notes="weekly retraining")
+    except ValueError as exc:  # not enough history yet: a normal situation, not a failure
+        return {"trained": False, "reason": str(exc)}
+    return {"trained": True, "version": model.version, "active": model.is_active,
+            "activation": model.metrics["activation"], "holdout_mae": model.metrics["model"]["mae"],
+            "baseline_b2_mae": model.metrics["baseline_b2"]["mae"]}
+
+
 @dataclass(frozen=True)
 class Job:
     run: Callable[[Session, JobContext], dict[str, Any]]
     every_seconds: int
     description: str
+    run_at_start: bool = True  # False: first run one interval after the worker starts
 
 
 JOBS: dict[str, Job] = {
@@ -132,6 +151,8 @@ JOBS: dict[str, Job] = {
     "collection_reminders": Job(collection_reminders, 5 * 60, "Remind people one hour before a pickup"),
     "token_cleanup": Job(token_cleanup, 24 * 3600, "Delete long-expired login sessions and old job history"),
     "file_cleanup": Job(file_cleanup, 24 * 3600, "Delete uploads never attached and files left by deleted users"),
+    "surplus_retrain": Job(surplus_retrain, 7 * 24 * 3600, "Retrain the surplus model on all daily logs (weekly)",
+                           run_at_start=False),
 }
 
 
@@ -143,7 +164,7 @@ def _lock_key(name: str) -> int:
 
 
 def run_job(engine: Engine, session_factory: sessionmaker, storage: LocalStorage, name: str,
-            trigger: str, now: datetime | None = None) -> JobRun:
+            trigger: str, now: datetime | None = None, ml_artifacts: Path | None = None) -> JobRun:
     """Run one job and record it in job_runs. Never raises: failures are recorded, not thrown,
     so one broken job can't stop the worker."""
     job = JOBS[name]
@@ -158,7 +179,7 @@ def run_job(engine: Engine, session_factory: sessionmaker, storage: LocalStorage
                                  error="The same job is already running.")
                 else:
                     try:
-                        result = job.run(db, JobContext(storage=storage, now=now or started))
+                        result = job.run(db, JobContext(storage=storage, now=now or started, ml_artifacts=ml_artifacts))
                         run = JobRun(job=name, trigger=trigger, status="success", result=result,
                                      started_at=started, finished_at=datetime.now(UTC))
                     except Exception as exc:  # noqa: BLE001 - recorded and logged, never re-raised

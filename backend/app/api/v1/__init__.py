@@ -18,6 +18,7 @@ from app.api.v1 import (
     listings,
     lookups,
     matching,
+    ml,
     notifications,
     profiles,
     requests,
@@ -41,5 +42,6 @@ api_router.include_router(assignments.router)
 api_router.include_router(notifications.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(issues.router)
+api_router.include_router(ml.router)
 api_router.include_router(verification.router)
 api_router.include_router(admin.router)

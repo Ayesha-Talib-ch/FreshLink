@@ -24,3 +24,8 @@ fpdf2==2.9.0              # PDF export of admin reports (pure Python)
 
 # Background worker (Stage 9)
 APScheduler==3.11.3       # runs the scheduled jobs in the separate worker process
+
+# Machine learning: surplus estimation (Stage 10). Pinned: saved models only load with the same versions.
+scikit-learn==1.9.1
+numpy==2.5.4
+joblib==1.6.0
