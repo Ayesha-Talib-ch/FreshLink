@@ -70,6 +70,8 @@ _DESCRIPTIONS = {
     403: "Logged in, but not allowed (wrong role, not verified, suspended ...)",
     404: "Not found (or not visible to you)",
     409: "Conflict (duplicate, or the data changed at the same time)",
+    413: "File too large",
+    415: "Unsupported file type (only PDF, JPG, PNG)",
     422: "Validation error: details.fields lists each problem",
     429: "Too many attempts; see the Retry-After header",
     503: "Database temporarily unavailable",

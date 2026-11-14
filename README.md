@@ -15,7 +15,8 @@ Development started. Each stage is added and tested one at a time.
 | 1a. Users table, register, login, `/auth/me`, role checks, create-admin command | Done |
 | 1b. Refresh tokens (rotation + reuse detection), logout, logout-all, change password, login rate limiting | Done |
 | 2a. Categories (seeded), public lookups, provider/receiver/volunteer profiles, receiver food preferences (capacity), volunteer availability, account update | Done |
-| 2b. Document upload, verification requests, admin approve / reject / request info | Next |
+| 2b. Private document upload, verification submit/status, admin queue with approve / reject / request info, receiver eligibility, append-only audit log | Done |
+| 3. Food listings (Provider) | Next |
 
 There's no website or mobile UI yet.
 

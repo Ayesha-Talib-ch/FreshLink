@@ -21,6 +21,7 @@ from app.api.v1 import api_router
 from app.core.config import Settings, get_settings
 from app.core.errors import CatchUnexpectedErrorsMiddleware, ErrorResponse, register_error_handlers
 from app.core.rate_limit import LoginThrottle
+from app.core.storage import LocalStorage
 from app.db.session import create_db_engine, create_session_factory
 
 
@@ -98,6 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
+    app.state.storage = LocalStorage(settings.storage_dir)
     app.state.login_throttle = LoginThrottle(
         per_account=settings.login_max_failures_per_account,
         per_ip=settings.login_max_failures_per_ip,

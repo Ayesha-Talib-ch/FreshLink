@@ -1,9 +1,10 @@
-# FreshLink — Manual Testing Guide (Stages 0–2a)
+# FreshLink — Manual Testing Guide (Stages 0–2b)
 
-This guide tests **every API built so far (25 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (36 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
-- **Time needed:** about 45 minutes
+- **Time needed:** about 60 minutes
+- **You need:** any small real PDF, JPG or PNG file on your computer (for section 10.4)
 - **Tick each box** as you go. If a result differs, copy the response and send it to the team.
 - All test accounts use emails starting with `guide.` so they're easy to delete afterwards (section 11).
 
@@ -297,6 +298,69 @@ Answer: email `guide.admin@example.com`, name `Guide Admin`, phone `0300 1110009
 | ☐ | `POST /api/v1/auth/login` with any body | **503** `DATABASE_UNAVAILABLE`, a clean message with no technical details |
 | ☐ | `docker compose start`, wait 10 s, `GET /api/v1/health` | **200** again, with no API restart needed |
 
+
+### 10.4 Account verification: documents and admin review (Stage 2b)
+
+**Part A: the provider submits documents.** Log in as the provider (`0300-1110001`, password `Fresh-Link-2026`, `"platform": "mobile"`) and **Authorize** with that token.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `GET /api/v1/lookups/verification-requirements`, `role` = `provider` | **200**: "Proof of business" (required) and "Photo of the shop front" (optional) |
+| ☐ | `GET /api/v1/me/verification` | **200**, `verification_status` "not_submitted", `profile_completed` true, `can_submit` true |
+| ☐ | `POST /api/v1/files`: **Choose File** (your PDF/JPG/PNG), `purpose` = `verification_doc` | **201**. 📋 copy the `id` as **FILE1** |
+| ☐ | Same, but choose a `.txt` file renamed to `.pdf` | **415** `UNSUPPORTED_FILE_TYPE` (the content is checked, not the name) |
+| ☐ | `GET /api/v1/files/{file_id}` with FILE1 | **200**, your file opens/downloads |
+| ☐ | `POST /api/v1/me/verification` with `{"documents": []}` | **422** `MISSING_REQUIRED_DOCUMENTS`, *Please upload: Proof of business.* |
+| ☐ | `POST /api/v1/me/verification` with the body below | **201**, `"status": "pending"` |
+| ☐ | Send it again | **409** `VERIFICATION_ALREADY_PENDING` |
+
+```json
+{ "documents": [ { "file_id": "PASTE-FILE1", "document_type": "business_proof" } ], "note": "Food authority licence attached" }
+```
+
+**Part B: another user can't see the document.** Log in as the volunteer (password is now `New-Fresh-2026`) and Authorize.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `GET /api/v1/files/{file_id}` with FILE1 | **404** (strangers can't even learn the file exists) |
+| ☐ | `GET /api/v1/admin/verifications` | **403** (admins only) |
+
+**Part C: the admin reviews.** Log in as `guide.admin@example.com` / `Admin-Fresh-2026` and Authorize.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `GET /api/v1/admin/verifications` | **200**, `total` 1: Guide Provider, role provider, `document_count` 1. 📋 copy the item `id` as **REQ1** |
+| ☐ | `GET /api/v1/admin/verifications/{request_id}` with REQ1 | **200**, includes `provider_profile` (Guide Fresh Bakers) and the document |
+| ☐ | `GET /api/v1/files/{file_id}` with FILE1 | **200**: the admin can open the document |
+| ☐ | `POST .../{request_id}/request-info` with `{"reason": "no"}` | **422** (a clear reason is required) |
+| ☐ | `POST .../{request_id}/request-info` with `{"reason": "Please upload a clearer photo of the licence."}` | **200**, `"status": "info_requested"` |
+| ☐ | `POST .../{request_id}/approve` with `{}` | **409** `ALREADY_REVIEWED` (only pending requests can be decided) |
+
+**Part D: the provider resubmits, the admin approves.**
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | As the provider: `GET /api/v1/me/verification` | `"info_requested"`, `review_notes` shows the admin's message, `can_submit` true |
+| ☐ | As the provider: upload again (FILE2) and submit it as `business_proof` | **201** pending |
+| ☐ | As the admin: `GET /api/v1/admin/verifications` → copy the new `id` (REQ2) → `POST .../{REQ2}/approve` with `{"notes": "Licence checked"}` | **200** `"approved"` |
+| ☐ | As the admin: `GET /api/v1/admin/verifications/{REQ2}` | `history` lists the earlier request as `info_requested` |
+| ☐ | As the provider: `GET /api/v1/auth/me` | `"verification_status": "approved"`, `"is_verified": true` |
+
+**Part E: receiver eligibility (admin).** You need the receiver's user `id`: log in as the receiver, call `GET /api/v1/auth/me` and copy `id`, then Authorize as admin again.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `PATCH /api/v1/admin/receivers/{user_id}/eligibility` with `{"is_eligible": false}` | **422** `REASON_REQUIRED` |
+| ☐ | Same with `{"is_eligible": false, "notes": "Duplicate organization"}` | **200**, `"is_eligible": false` |
+| ☐ | Same with `{"is_eligible": true}` | **200**, eligible again |
+
+**Part F: the audit log.** In PowerShell:
+```powershell
+docker exec freshlink-db psql -U freshlink -d freshlink -c "SELECT action, actor_email, reason FROM audit_logs ORDER BY created_at;"
+```
+☐ Four rows: `verification.request_info`, `verification.approve`, and two `receiver.eligibility`, each with the admin's email.
+☐ Try to tamper with it: `docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM audit_logs;"` → **ERROR: audit_logs is append-only**.
+
 ---
 
 ## 11. Clean up the test accounts
@@ -308,6 +372,10 @@ docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM users WH
 ```
 ☐ Output `DELETE 4`
 
+Notes:
+- The **audit log keeps its entries**. That's on purpose: history is never deleted.
+- Uploaded files stay in `backend\storage` (git-ignored). You can delete that folder's contents by hand if you want.
+
 ---
 
 ## 12. Automated tests (the same checks and more, in about 40 seconds)
@@ -317,7 +385,7 @@ cd D:\University\FreshLink\backend
 .\.venv\Scripts\Activate.ps1
 pytest
 ```
-☐ `229 passed`. Docker must be running. The tests use a separate `freshlink_test` database, so your data is never touched.
+☐ `266 passed`. Docker must be running. The tests use a separate `freshlink_test` database, so your data is never touched.
 
 ---
 

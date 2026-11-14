@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     # Seconds to wait for PostgreSQL before giving up (keeps /health fast).
     db_connect_timeout: int = 5
 
+    # ---------- File storage ----------
+    # Private folder for uploaded documents (git-ignored). Never served as static files.
+    storage_dir: Path = BACKEND_DIR / "storage"
+    max_upload_mb: int = Field(default=5, ge=1, le=50)
+    max_files_per_user: int = Field(default=30, ge=1)
+
     # ---------- Authentication ----------
     # Secret key that signs login tokens. Anyone who knows it can forge a token
     # for any user, so it lives only in backend/.env and must be long and random.

@@ -37,6 +37,13 @@ This file records decisions taken during development and any questions that are 
 | D25 | 2026-11-14 | Login limits split: **5 failures per account**, **20 per IP**, per minute (`LOGIN_MAX_FAILURES_PER_ACCOUNT`, `LOGIN_MAX_FAILURES_PER_IP`) | Pakistani mobile networks use carrier-grade NAT (many users share one IP). With 5 per IP, a few typos by strangers could lock out a whole network. Per-account still stops guessing one password |
 | D26 | 2026-11-14 | Command-line output is plain ASCII (`[OK]`, `[x]`) | `create-admin` crashed in Windows terminals using code page 1252 when printing a check mark |
 
+| D27 | 2026-11-14 | An **approved** user who edits their profile **stays approved** | Simplest rule for v1; a "send back for review on key changes" rule can be added if the supervisor wants it. **Needs supervisor confirmation** |
+| D28 | 2026-11-14 | Document requirements are seeded per role / receiver category (provider: business proof + optional shop photo; NGO: registration certificate; community kitchen/group: organization proof; individual + volunteer: CNIC; small business: business proof) | Minimum data needed (plan issue M7); admins can change them in the admin stage |
+| D29 | 2026-11-14 | File type is detected from the file's first bytes (PDF/PNG/JPEG only), max 5 MB, max 30 files per user; files stored under random names in a git-ignored private folder | Never trust the file name or the browser's claimed type; prevents path traversal |
+| D30 | 2026-11-14 | Strangers get **404** (not 403) for files they may not read | Doesn't reveal that the file exists (plan section 5.3) |
+| D31 | 2026-11-14 | Audit log is append-only via a database trigger; `actor_id` has no foreign key | Even an application bug can't rewrite history; entries survive user deletion. In production the app's DB role should also lack TRUNCATE |
+| D32 | 2026-11-14 | Notifications for verification results are **not sent yet** | The notifications feature (plan Phase 2) will add "verification approved/rejected" messages; until then the user sees the result on the Verification screen |
+
 ## API review after Stage 2a (2026-11-14)
 
 All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 lines are trivial), 4 problems were fixed (message prefix, wrong 422 docs, missing CORS header on 500, Swagger cookie flow), and every fix has a test that was shown to fail without it.
@@ -46,6 +53,7 @@ All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 l
 - Expired/revoked refresh-token rows are never deleted yet. A clean-up job belongs in the worker process (plan section 2.1, worker stage).
 - Stage 2b must decide what happens when an **approved** user edits key profile details (e.g. business name or category): keep the approval, or send the profile back for review.
 - The "allow small business receivers" platform setting (plan section 3.3) arrives with `platform_settings` in the admin stage; until then the category's `is_active` flag controls it.
+- Uploaded files of deleted users stay on disk (their database rows are deleted). A clean-up job and a document-retention setting (plan issue M7) belong to the worker/admin stages.
 - Behind a hosting proxy, the client IP for rate limiting must come from `X-Forwarded-For` (`uvicorn --proxy-headers`). Configure this at deployment.
 
 ## Open (need the team's or supervisor's answer)

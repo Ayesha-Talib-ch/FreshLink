@@ -22,8 +22,10 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.security import TokenError, decode_access_token
+from app.core.storage import LocalStorage
 from app.domain.enums import AccountStatus, UserRole
 from app.models.user import User
+from app.services.audit_service import ClientInfo
 
 
 def get_app_settings(request: Request) -> Settings:
@@ -122,3 +124,19 @@ def require_super_admin(user: CurrentUser) -> User:
 VerifiedUser = Annotated[User, Depends(require_verified)]
 AdminUser = Annotated[User, Depends(require_roles(UserRole.ADMIN))]
 SuperAdminUser = Annotated[User, Depends(require_super_admin)]
+
+
+def get_client_info(request: Request) -> ClientInfo:
+    """IP address + browser/app name, stored with every audit-log entry."""
+    return ClientInfo(
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+
+def get_storage(request: Request) -> LocalStorage:
+    return request.app.state.storage
+
+
+Client = Annotated[ClientInfo, Depends(get_client_info)]
+Storage = Annotated[LocalStorage, Depends(get_storage)]

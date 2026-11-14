@@ -96,7 +96,7 @@ def test_db_engine() -> Iterator[Engine]:
 
 # Tables filled by migrations with starting data (categories). They are NOT emptied
 # between tests; tests must not change them (or must undo their changes).
-SEEDED_TABLES = {"provider_categories", "receiver_categories", "food_categories"}
+SEEDED_TABLES = {"provider_categories", "receiver_categories", "food_categories", "verification_requirements"}
 
 
 @pytest.fixture(autouse=True)
@@ -113,11 +113,12 @@ def _empty_tables_after_test(request: pytest.FixtureRequest) -> Iterator[None]:
 
 
 @pytest.fixture
-def test_settings(test_db_engine: Engine) -> Settings:
+def test_settings(test_db_engine: Engine, tmp_path: Path) -> Settings:
     url = test_db_engine.url.render_as_string(hide_password=False)
     return _base_settings().model_copy(
         update={
             "app_env": "test",
+            "storage_dir": tmp_path / "storage",  # uploads go to a temporary folder per test
             "database_url": SecretStr(url),
             "jwt_secret": SecretStr(TEST_JWT_SECRET),
             "access_token_expire_minutes": 15,

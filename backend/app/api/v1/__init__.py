@@ -6,10 +6,13 @@ website and the mobile app see exactly the same endpoints.
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, lookups, profiles, system
+from app.api.v1 import admin, auth, files, lookups, profiles, system, verification
 
 api_router = APIRouter()
 api_router.include_router(system.router)
 api_router.include_router(auth.router)
 api_router.include_router(lookups.router)
 api_router.include_router(profiles.router)
+api_router.include_router(files.router)
+api_router.include_router(verification.router)
+api_router.include_router(admin.router)

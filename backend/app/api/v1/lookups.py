@@ -1,6 +1,8 @@
 """Public lookups: the lists both apps need to build their forms (no login needed,
 because the registration form uses them before the user has an account)."""
 
+import uuid
+
 from fastapi import APIRouter
 from sqlalchemy import select
 
@@ -11,12 +13,15 @@ from app.domain.enums import (
     AccountStatus,
     PerishabilityClass,
     QuantityUnit,
+    UserRole,
     VehicleType,
     VerificationStatus,
 )
 from app.models.category import FoodCategory, ProviderCategory, ReceiverCategory
 from app.schemas.lookups import CategoryOut, EnumsOut, FoodCategoryOut, ReceiverCategoryOut
 from app.schemas.profiles import DAYS
+from app.schemas.verification import RequirementOut
+from app.services.verification_service import requirements_for
 
 router = APIRouter(prefix="/lookups", tags=["lookups"])
 
@@ -54,3 +59,12 @@ def enums() -> EnumsOut:
         account_statuses=[s.value for s in AccountStatus],
         days_of_week=list(DAYS),
     )
+
+
+@router.get("/verification-requirements", response_model=list[RequirementOut])
+def verification_requirements(
+    role: UserRole, db: DbSession, receiver_category_id: uuid.UUID | None = None
+):  # noqa: ANN201
+    """Which documents a role (and receiver category) must upload. Used by the
+    registration wizard on both apps, before the user has an account."""
+    return requirements_for(db, role, receiver_category_id)

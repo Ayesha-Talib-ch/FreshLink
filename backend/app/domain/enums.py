@@ -80,3 +80,17 @@ class VehicleType(StrEnum):
     CAR = "car"
     VAN = "van"
     OTHER = "other"
+
+
+class FilePurpose(StrEnum):
+    VERIFICATION_DOC = "verification_doc"
+    LISTING_IMAGE = "listing_image"  # used from the food listings stage
+
+
+class VerificationRequestStatus(StrEnum):
+    """One submission's state. The user's overall state is users.verification_status."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    INFO_REQUESTED = "info_requested"
