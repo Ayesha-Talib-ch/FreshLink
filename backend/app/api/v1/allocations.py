@@ -20,6 +20,7 @@ from app.schemas.allocations import AllocationOut, AllocationRunIn, AllocationRu
 from app.schemas.common import Page
 from app.schemas.verification import ReasonIn
 from app.services import allocation_service as svc
+from app.services import settings_service
 
 router = APIRouter(tags=["allocation"])
 
@@ -31,7 +32,8 @@ ProviderOrAdmin = Annotated[User, Depends(require_roles(UserRole.PROVIDER, UserR
 def suggest_allocation(listing_id: uuid.UUID, body: AllocationRunIn, user: ProviderOrAdmin, db: DbSession):  # noqa: ANN201
     """Suggest how to divide the remaining food between the PENDING requests.
     Each line explains why. Nothing changes until you confirm."""
-    return svc.suggest(db, user, listing_id, AllocationRunPolicy(body.policy))
+    policy = body.policy or settings_service.get(db, "default_allocation_policy")
+    return svc.suggest(db, user, listing_id, AllocationRunPolicy(policy))
 
 
 @router.get("/listings/{listing_id}/allocation-runs", response_model=list[AllocationRunOut],

@@ -31,8 +31,6 @@ from app.domain.formatting import format_quantity
 from app.engines.geo import haversine_km, haversine_km_sql
 from app.engines.matching import (
     MODEL_VERSION,
-    PLATFORM_MAX_RADIUS_KM,
-    WEIGHTS,
     ListingFacts,
     MatchResult,
     ReceiverFacts,
@@ -47,6 +45,7 @@ from app.models.request import FoodRequest
 from app.models.user import User
 from app.services import browse_service, urgency_service
 from app.services import notification_service as notes
+from app.services import settings_service
 
 RECENT_DAYS = 30
 
@@ -99,10 +98,11 @@ def compute(db: Session, listing: FoodListing) -> tuple[MatchResult, dict[uuid.U
     distance = haversine_km_sql(ReceiverProfile.latitude, ReceiverProfile.longitude,
                                 listing.pickup_latitude, listing.pickup_longitude)
     requested_here = select(FoodRequest.receiver_id).where(FoodRequest.listing_id == listing.id)
+    max_travel = float(settings_service.get(db, "max_travel_km_with_transport"))
     profiles = db.execute(
         select(ReceiverProfile, distance).join(User, User.id == ReceiverProfile.user_id)
         .where(User.deleted_at.is_(None),
-               or_(distance <= PLATFORM_MAX_RADIUS_KM, ReceiverProfile.id.in_(requested_here)))
+               or_(distance <= max_travel, ReceiverProfile.id.in_(requested_here)))
     ).unique().all()
     found = {p.id: (p, round(float(d), 2)) for p, d in profiles}
 
@@ -110,7 +110,8 @@ def compute(db: Session, listing: FoodListing) -> tuple[MatchResult, dict[uuid.U
         Allocation.listing_id == listing.id, Allocation.status != AllocationStatus.CANCELLED)))
     recent = _recent_allocation_counts(db, list(found))
     facts = [_facts(p, listing, d, recent.get(p.id, 0), allocated) for p, d in found.values()]
-    return rank(_listing_facts(db, listing), facts, _max_weight(db)), found
+    return rank(_listing_facts(db, listing), facts, _max_weight(db),
+                weights=settings_service.get(db, "matching_weights"), max_travel_km=max_travel), found
 
 
 def _owned_listing(db: Session, user: User, listing_id: uuid.UUID) -> FoodListing:
@@ -134,7 +135,8 @@ def matches_for_listing(db: Session, user: User, listing_id: uuid.UUID) -> dict[
     requested = set(db.scalars(select(FoodRequest.receiver_id).where(
         FoodRequest.listing_id == listing.id, FoodRequest.status.in_(ACTIVE_REQUEST_STATUSES))))
     return {
-        "listing_id": listing.id, "model_version": result.model_version, "weights": WEIGHTS,
+        "listing_id": listing.id, "model_version": result.model_version,
+        "weights": settings_service.get(db, "matching_weights"),
         "generated_at": datetime.now(UTC),
         "matches": [{"rank": m.rank, "score": m.score, "components": m.components, "reasons": m.reasons,
                      "has_active_request": m.receiver_id in requested,
@@ -144,12 +146,13 @@ def matches_for_listing(db: Session, user: User, listing_id: uuid.UUID) -> dict[
     }
 
 
-TOP_K_TO_NOTIFY = 5
-
-
-def notify_top_matches(db: Session, listing: FoodListing, k: int = TOP_K_TO_NOTIFY) -> int:
+def notify_top_matches(db: Session, listing: FoodListing, k: int | None = None) -> int:
     """Spec 4.2.6 "new relevant food listings": tell the best-matching receivers (plan H6, job 1).
-    Each receiver is told about a listing only once (notified_at). The caller commits."""
+    k defaults to the "match_notify_top_k" setting. Each receiver is told about a listing only once
+    (notified_at). The caller commits."""
+    k = settings_service.get(db, "match_notify_top_k") if k is None else k
+    if k <= 0:
+        return 0
     rows = db.scalars(select(MatchRecommendation).where(
         MatchRecommendation.listing_id == listing.id, MatchRecommendation.notified_at.is_(None))
         .order_by(MatchRecommendation.rank).limit(k)).all()
@@ -213,12 +216,14 @@ def recommended_for(db: Session, user: User, limit: int) -> list[FoodListing]:
     profile = db.scalar(select(ReceiverProfile).where(ReceiverProfile.user_id == user.id))
     if profile is None:
         raise AppError(409, "PROFILE_REQUIRED", "Please complete your receiver profile first.")
-    radius = PLATFORM_MAX_RADIUS_KM if profile.has_own_transport else float(profile.max_pickup_radius_km)
+    max_travel = float(settings_service.get(db, "max_travel_km_with_transport"))
+    radius = max_travel if profile.has_own_transport else float(profile.max_pickup_radius_km)
     page = browse_service.browse(db, user, radius_km=radius, sort="distance", page=1, page_size=100)
     already = set(db.scalars(select(FoodRequest.listing_id).where(
         FoodRequest.receiver_id == profile.id, FoodRequest.status.in_(ACTIVE_REQUEST_STATUSES))))
 
     max_weight = _max_weight(db)
+    weights = settings_service.get(db, "matching_weights")
     picked: list[tuple[float, FoodListing]] = []
     for listing in page["items"]:
         if listing.id in already:
@@ -226,7 +231,7 @@ def recommended_for(db: Session, user: User, limit: int) -> list[FoodListing]:
         distance = haversine_km(listing.pickup_latitude, listing.pickup_longitude, profile.latitude, profile.longitude)
         # Fairness compares receivers with each other; with one receiver it is neutral (0).
         facts = _facts(profile, listing, distance, recent=0, allocated_ids=set())
-        result = rank(_listing_facts(db, listing), [facts], max_weight)
+        result = rank(_listing_facts(db, listing), [facts], max_weight, weights=weights, max_travel_km=max_travel)
         if result.matches:
             match = result.matches[0]
             listing.match = {"score": match.score, "reasons": match.reasons, "model_version": MODEL_VERSION}

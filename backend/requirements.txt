@@ -18,3 +18,6 @@ email-validator==2.3.0     # checks email address format
 
 # File uploads (Stage 2b)
 python-multipart==0.0.33   # lets FastAPI read multipart/form-data uploads
+
+# Report exports (Stage 8c)
+fpdf2==2.9.0              # PDF export of admin reports (pure Python)

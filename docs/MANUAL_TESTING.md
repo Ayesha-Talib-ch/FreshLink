@@ -1,6 +1,6 @@
 # FreshLink — Manual Testing Guide (Stages 0–6b)
 
-This guide tests **every API built so far (104 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (143 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
 - **Time needed:** about 165 minutes
@@ -635,6 +635,63 @@ Everything you did above has already left notifications behind. No new set-up is
 | ☐ | Admin: suspend **your own** id (from `/auth/me`) | **409** `CANNOT_CHANGE_OWN_ACCOUNT` |
 | ☐ | Admin (a super admin, from section 10.2): `POST /api/v1/admin/admins` with `{"email": "guide.admin2@example.com", "phone": "0300 1110010", "full_name": "Second Admin", "password": "Admin-Two-2026"}` | **201**, `"is_super_admin": false`; it can log in |
 | ☐ | Log in as the second admin and try `POST /api/v1/admin/admins` again | **403** (only super admins create admins) |
+
+
+### 10.15 Admin monitoring, moderation and problem reports (Stage 8b)
+
+**Set up.** As the provider, create a listing "Samosa" (Fast food, `piece`, 40, preparation 30 min ago, pickup window
+1 h to 4 h from now). As the NGO, request 10 pieces (📋 copy the request `id` as **R9**).
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Admin: `GET /api/v1/admin/listings?q=samosa` | the listing with `pending_requests: 1` and `date_warnings: []` |
+| ☐ | Admin: `GET /api/v1/admin/listings?status=closed` | listings closed earlier in this guide; receivers never see these |
+| ☐ | Admin: `POST /api/v1/admin/listings/{listing_id}/suspend` with `{"reason": "Checking the photos"}` | **200** `suspended`; the provider gets *"Listing suspended"* |
+| ☐ | NGO: `GET /api/v1/listings` | the samosas are **gone** |
+| ☐ | Provider: `POST /api/v1/listings/{listing_id}/resume` | **409** (only an admin can lift a suspension) |
+| ☐ | Admin: `POST .../reinstate` with `{"reason": "Photos are fine"}` | **200** `active`; visible again |
+| ☐ | NGO: `POST /api/v1/issues` with `{"entity_type": "request", "entity_id": "R9", "category": "delay", "description": "No reply from the shop yet."}` | **201** `open`; the admin gets *"Problem reported: request"* |
+| ☐ | Same again | **409** `DUPLICATE_ISSUE` |
+| ☐ | Volunteer: `POST /api/v1/issues` about R9 | **404** (not involved) |
+| ☐ | Admin: `GET /api/v1/admin/issues?unresolved_only=true` | the report. 📋 copy its `id` as **I1** |
+| ☐ | Admin: `PATCH /api/v1/admin/issues/{issue_id}` (I1) with `{"status": "resolved"}` | **422** `RESOLUTION_NOTE_REQUIRED` |
+| ☐ | Same with `{"status": "resolved", "resolution_note": "We called the shop; pickup at 6 pm."}` | **200**; the NGO gets *"Your problem report was resolved"* |
+| ☐ | Admin: `POST .../close` (the samosa listing) with `{"reason": "Provider asked us by phone"}` | **200** `closed`; R9 becomes `expired` |
+| ☐ | Admin: `GET /api/v1/admin/volunteers` | the volunteer with `completed_deliveries` and `completion_rate` (1.0 after section 10.12) |
+| ☐ | Admin: `GET /api/v1/admin/allocation-runs` | runs with `suggested_total`, `approved_total` and `overrides` |
+
+
+### 10.16 Reports, exports, fairness and the audit log (Stage 8c)
+
+Everything you did in this guide is now report data. Log in as the admin.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `GET /api/v1/admin/reports/summary` | `quantity_listed`, `quantity_allocated`, `quantity_collected`, `quantity_distributed` as **separate** lists per unit (e.g. kg and package apart) |
+| ☐ | Same with `date_to` = a date last year | all counts **0** |
+| ☐ | `GET /api/v1/admin/reports/timeseries?interval=week` | one row per week (Mondays), empty weeks included |
+| ☐ | `GET /api/v1/admin/reports/categories`, then `/providers`, `/receivers`, `/volunteers` | rows for the guide's food categories, the bakery, the NGO / kitchen, the volunteer |
+| ☐ | `GET /api/v1/admin/fairness` | `average_fill_ratio` per receiver category, `inequality_by_unit` with a `gini` between 0 and 1, `override_rate` |
+| ☐ | `GET /api/v1/admin/reports/export?report=summary&format=csv` | Swagger shows **Download file**; it opens in Excel with "12.5 kg; 30 packages"-style values |
+| ☐ | Same with `format=pdf` | a PDF titled "FreshLink - Summary" with the filters and a table |
+| ☐ | `GET /api/v1/admin/audit-logs?action=report.` | your two exports (`report.export`), newest first |
+| ☐ | As the provider: `GET /api/v1/admin/reports/summary` | **403** |
+
+
+### 10.17 System management: categories, documents, settings (Stage 8d)
+
+Log in as the admin. **Undo what you change here at the end** (the last rows show how).
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | `GET /api/v1/admin/settings` | five settings, all `"is_default": true` |
+| ☐ | `PUT /api/v1/admin/settings/matching_weights` with `{"value": {"distance": 0.9, "capacity_fit": 0.2, "collection_fit": 0.15, "urgency_feasibility": 0.15, "category_priority": 0.1, "fairness": 0.1}}` | **422** `INVALID_SETTING`: *"The weights must add up to 1 (they add up to 1.600)."* |
+| ☐ | `PUT /api/v1/admin/settings/match_notify_top_k` with `{"value": 0}` | **200** `"is_default": false`; a new listing now notifies nobody |
+| ☐ | `PUT /api/v1/admin/settings/listing_max_days_ahead` with `{"value": 1}`; as the provider create a listing 3 days ahead | **422** *"Listings can be scheduled at most 1 days ahead."* |
+| ☐ | `POST /api/v1/admin/food-categories` with `{"code": "guide_sweets", "name": "Sweets", "perishability_class": "bakery"}` | **201** with `"in_use": 0`; it appears in `GET /api/v1/lookups/food-categories` and in `GET /api/v1/admin/urgency-rules` |
+| ☐ | `DELETE /api/v1/admin/food-categories/{category_id}` with the **Bakery items** id | **409** `CATEGORY_IN_USE` (listings use it) |
+| ☐ | `POST /api/v1/admin/verification-requirements` with `{"role": "volunteer", "receiver_category_id": "<any id>", "document_type": "guide_doc", "name": "Test"}` | **422** `CATEGORY_ONLY_FOR_RECEIVERS` |
+| ☐ | **Undo:** `DELETE /api/v1/admin/settings/match_notify_top_k` and `.../listing_max_days_ahead`; `DELETE /api/v1/admin/food-categories/{id}` (Sweets) | settings back to default; **204** |
 
 
 ---
