@@ -12,9 +12,32 @@ Development started. Each stage is added and tested one at a time.
 |---|---|
 | 0a. Repository scaffold + backend skeleton | Done |
 | 0b. PostgreSQL (Docker), SQLAlchemy, Alembic migrations, error format, DB health check | Done |
-| 1. Authentication and roles | Next |
+| 1a. Users table, register, login, `/auth/me`, role checks, create-admin command | Done |
+| 1b. Refresh tokens (rotation + reuse detection), logout, logout-all, change password, login rate limiting | Done |
+| 2a. Categories (seeded), public lookups, provider/receiver/volunteer profiles, receiver food preferences (capacity), volunteer availability, account update | Done |
+| 2b. Private document upload, verification submit/status, admin queue with approve / reject / request info, receiver eligibility, append-only audit log | Done |
+| 3a. Food listings: create / view / edit (optimistic locking) / pause / resume / close / remove, category date rules, food photos, status history | Done |
+| 3b. Urgency engine (rule-based, per-category thresholds, explanations), admin urgency rules, expiry scan (`python -m app.cli urgency-scan`) | Done |
+| 4a. Receiver browse / search: typo-tolerant name search, category, distance (Haversine) with saved location and pickup radius, quantity + unit, pickup time, urgency; 5 sort orders; only food that can still be collected | Done |
+| 4b. Food requests: create (eligibility, availability, quantity and capacity checks), role-scoped lists, edit / cancel, provider reject with reason, incoming requests per listing, requests expire when a listing ends | Done |
+| 5a. Allocation: explainable suggestions (priority-weighted / proportional-fair / first-come) with reproducible snapshots, confirm with overrides + reasons in one locked transaction, approve shortcut, cancel; spec example gives 15 / 10 / 5 | Done |
+| 5b. Matching v1 (explainable heuristic): ranked receivers with score parts and reasons, explained exclusions, "Recommended for you", match scores on incoming requests, stored snapshots with outcomes | Done |
+| 6a. Collections: created on allocation, schedule (method/time), provider handover, receiver receipt (completes the redistribution), failure with food returned, contacts shared within the transaction | Done |
+| 6b. Volunteer assignments: open tasks near the volunteer, claim / assign / accept / decline, step-by-step delivery (collected = handover), receipt completes the task, failures with reasons, admin suggestions / reassign / cancel, contacts only after accepting | Done |
+| 7. In-app notifications: list / unread count / mark read, links to the related record, sent inside the same transaction as each event (requests, decisions, allocations, collections, delivery tasks, verification, urgency, top-5 new-listing matches, admin alerts); admin announcements (everyone / one role / chosen users) and category switches | Done |
+| 8a. Dashboards for all four roles (`/me/dashboard`), the admin dashboard (the spec's 15 metrics, quantities per unit) and activity feed; admin user management: search / filter / view, activate / deactivate / suspend with reasons (sessions end at once, a suspended provider's food is hidden), account history, super admins create admins | Done |
+| 8b. Admin monitoring of listings, requests, allocations, collections and volunteers; listing moderation; problem reports | Next |
+| 8c. Reports and exports, fairness, platform settings, category management, audit-log viewer | Planned |
 
-There are no app tables, login or UI yet.
+There's no website or mobile UI yet.
+
+## Create the first administrator
+Admins can't sign up through the website or app. Create the first one on your own computer
+(from `backend/`, with the venv active). You'll be asked for the details and a hidden password:
+
+```powershell
+python -m app.cli create-admin
+```
 
 ## Database: first-time setup (Docker Desktop must be running)
 
@@ -65,6 +88,7 @@ cd D:\University\FreshLink\backend
 .\.venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload     # start the API at http://127.0.0.1:8000
 pytest                            # run all tests (needs the database running)
+pytest --cov=app --cov-report=term-missing   # also show which code lines no test runs
 ```
 
 - Health check: http://127.0.0.1:8000/api/v1/health (returns 503 if the database is down)
