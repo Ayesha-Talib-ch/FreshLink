@@ -195,7 +195,7 @@ def decide(
 ) -> VerificationRequest:
     # Lock the request row: if two admins click at the same moment, the second
     # one waits, then sees it's no longer pending and gets a 409.
-    request = db.scalar(select(VerificationRequest).where(VerificationRequest.id == request_id).with_for_update())
+    request = db.scalar(select(VerificationRequest).where(VerificationRequest.id == request_id).with_for_update(of=VerificationRequest))
     if request is None:
         raise AppError(404, "NOT_FOUND", "Verification request not found.")
     if request.status != VerificationRequestStatus.PENDING:

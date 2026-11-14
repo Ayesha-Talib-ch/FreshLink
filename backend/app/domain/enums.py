@@ -140,3 +140,26 @@ ACTIVE_REQUEST_STATUSES = (RequestStatus.PENDING, RequestStatus.APPROVED, Reques
 class CollectionPreference(StrEnum):
     SELF_PICKUP = "self_pickup"  # the receiver collects the food themselves
     NEEDS_VOLUNTEER = "needs_volunteer"  # a volunteer should deliver it (volunteer stage)
+
+
+class AllocationRunPolicy(StrEnum):
+    PRIORITY_WEIGHTED = "priority_weighted"  # default (spec 5.5 example)
+    PROPORTIONAL_FAIR = "proportional_fair"
+    FIRST_COME = "first_come"
+    MANUAL = "manual"  # the "approve one request" shortcut
+
+
+class AllocationRunStatus(StrEnum):
+    DRAFT = "draft"  # a suggestion waiting for the provider/admin
+    CONFIRMED = "confirmed"
+    DISCARDED = "discarded"
+    SUPERSEDED = "superseded"  # out of date: the listing or requests changed
+
+
+class AllocationStatus(StrEnum):
+    CONFIRMED = "confirmed"  # food promised to the receiver
+    IN_COLLECTION = "in_collection"  # collection stage
+    COLLECTED = "collected"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"

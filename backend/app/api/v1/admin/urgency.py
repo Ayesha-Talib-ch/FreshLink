@@ -60,7 +60,7 @@ def save_rule(food_category_id: uuid.UUID, body: UrgencyRuleIn, admin: AdminUser
     if category is None:
         raise AppError(404, "NOT_FOUND", "Food category not found.")
     row = db.scalar(select(UrgencyRuleRow).where(UrgencyRuleRow.food_category_id == food_category_id)
-                    .with_for_update())
+                    .with_for_update(of=UrgencyRuleRow))
     before = None
     if row is None:
         row = UrgencyRuleRow(food_category_id=food_category_id)

@@ -1,9 +1,9 @@
-# FreshLink — Manual Testing Guide (Stages 0–4b)
+# FreshLink — Manual Testing Guide (Stages 0–5a)
 
-This guide tests **every API built so far (57 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (66 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
-- **Time needed:** about 110 minutes
+- **Time needed:** about 130 minutes
 - **You need:** any small real PDF, JPG or PNG file on your computer (for section 10.4)
 - **Tick each box** as you go. If a result differs, copy the response and send it to the team.
 - All test accounts use emails starting with `guide.` so they're easy to delete afterwards (section 11).
@@ -498,18 +498,51 @@ As the **receiver** (verified in 10.7), set your capacity: `PUT /api/v1/receiver
 | ☐ | Receiver: `GET /api/v1/requests/{request_id}/history` (Q2) | `pending` → `expired`, reason *listing closed by the provider* |
 | ☐ | Volunteer: `GET /api/v1/requests` | **403** (volunteers don't have requests) |
 
+
+### 10.9 Allocation: the specification's example (Stage 5a)
+
+Spec 5.5: *a bakery has 30 bread packages; an NGO asks for 15, a community kitchen for 10 and a family for 10.*
+
+**Set up two more receivers.** Register them with `POST /api/v1/auth/register` (`"role": "receiver"`, password `Fresh-Link-2026`):
+`guide.kitchen@example.com` (phone `0300 1110004`) and `guide.family@example.com` (phone `0300 1110005`). Approve both quickly:
+```powershell
+docker exec freshlink-db psql -U freshlink -d freshlink -c "UPDATE users SET verification_status = 'approved' WHERE email IN ('guide.kitchen@example.com', 'guide.family@example.com');"
+```
+Log in as each and create its profile with `PUT /api/v1/receivers/me`: the kitchen with the **Community kitchen** category,
+the family with **Individual / household** plus `"household_size": 6`. Use the Model Town address from section 6.
+Your existing `guide.receiver` is the NGO, but **change its category to Welfare organization / NGO** (`PUT /api/v1/receivers/me`)
+and clear its capacity (`PUT /api/v1/receivers/me/food-preferences` with `{"preferences": []}`).
+
+**The listing and the requests.** As the provider, create "Bread packages" (Bakery items, `package`, **30**), pickup from 1 h to 5 h from now
+(📋 **L4**). Then request it, **in this order**: NGO **15**, kitchen **10**, family **10**.
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Provider: `POST /api/v1/listings/{listing_id}/allocation-runs` (L4) with `{"policy": "priority_weighted"}` | **201** draft: NGO **15**, kitchen **10**, family **5**, exactly as in spec 5.5. The family's line explains *5 packages of 10 packages requested: the remaining quantity after higher-priority or earlier requests*. 📋 copy the run `id` as **RUN1** |
+| ☐ | Same with `{"policy": "proportional_fair"}` | NGO **13**, kitchen **9**, family **8** (everyone gets about 86% of what they asked for). 📋 **RUN2** |
+| ☐ | `POST /api/v1/allocation-runs/{run_id}/confirm` with RUN1 and `{"lines": []}` | **409** `RUN_NOT_DRAFT`: only the newest suggestion (RUN2) can be confirmed |
+| ☐ | Create a priority suggestion again (📋 **RUN3**), then confirm it with `{"lines": [{"request_id": "FAMILY-REQUEST-ID", "approved_quantity": 3}]}` | **422** `OVERRIDE_REASON_REQUIRED` |
+| ☐ | Same, adding `"override_reason": "Family asked for less today"` | **200** `confirmed` |
+| ☐ | `GET /api/v1/listings/{listing_id}` (L4) | `allocated_quantity` 28, `remaining_quantity` 2, still `active` |
+| ☐ | Family: `GET /api/v1/requests` | its request is `partially_approved`, with `allocation.approved_quantity` **3** |
+| ☐ | Family: `GET /api/v1/allocations` | one allocation of 3 packages of "Bread packages" |
+| ☐ | Provider: `POST /api/v1/allocations/{allocation_id}/cancel` (the family's allocation) with `{"reason": "Family can't come today"}` | **200** `cancelled`; the listing's `remaining_quantity` goes back to 5 |
+| ☐ | Admin: in PowerShell, `docker exec freshlink-db psql -U freshlink -d freshlink -c "SELECT action, reason FROM audit_logs ORDER BY created_at DESC LIMIT 2;"` | `allocation.cancel` and `allocation.confirm` (with the override reason) |
+
 ---
 
 ## 11. Clean up the test accounts
 
-This deletes only the `guide.` accounts. Requests and then listings must be deleted first (the database protects history: a receiver with requests, or a provider with listings, can't simply be deleted); profiles, sessions and listing history then go automatically (ON DELETE CASCADE).
+This deletes only the `guide.` accounts. Allocations, suggestions, requests and then listings must be deleted first (the database protects history: a receiver with requests, or a provider with listings, can't simply be deleted); profiles, sessions and listing history then go automatically (ON DELETE CASCADE).
 
 ```powershell
+docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM allocations WHERE receiver_id IN (SELECT r.id FROM receiver_profiles r JOIN users u ON u.id = r.user_id WHERE u.email LIKE 'guide.%');"
+docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM allocation_runs WHERE listing_id IN (SELECT l.id FROM food_listings l JOIN provider_profiles p ON p.id = l.provider_id JOIN users u ON u.id = p.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM food_requests WHERE receiver_id IN (SELECT r.id FROM receiver_profiles r JOIN users u ON u.id = r.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM food_listings WHERE provider_id IN (SELECT p.id FROM provider_profiles p JOIN users u ON u.id = p.user_id WHERE u.email LIKE 'guide.%');"
 docker exec freshlink-db psql -U freshlink -d freshlink -c "DELETE FROM users WHERE email LIKE 'guide.%';"
 ```
-☐ Output `DELETE 4`
+☐ The last command shows `DELETE 6` (provider, receiver, volunteer, admin, kitchen, family)
 
 Notes:
 - The **audit log keeps its entries**. That's on purpose: history is never deleted.

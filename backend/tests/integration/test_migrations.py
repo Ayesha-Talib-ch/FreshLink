@@ -65,3 +65,18 @@ def test_seeded_tables_survive_test_cleanup(test_db_engine: Engine) -> None:
             "WHERE tc.constraint_type = 'FOREIGN KEY'")).all()
     bad = [(table, target) for table, target in rows if table in SEEDED_TABLES and target not in SEEDED_TABLES]
     assert bad == [], f"seeded tables pointing at emptied tables: {bad}"
+
+
+def test_every_row_lock_names_its_table() -> None:
+    """Regression guard: `SELECT ... FOR UPDATE` on a model that auto-joins optional related
+    rows fails in PostgreSQL ("FOR UPDATE cannot be applied to the nullable side of an outer
+    join"). This bit us twice, so every lock must say which table it locks: with_for_update(of=...)."""
+    import re
+    from pathlib import Path
+
+    app_dir = Path(__file__).resolve().parents[2] / "app"
+    offenders = [f"{path.relative_to(app_dir)}:{n}"
+                 for path in app_dir.rglob("*.py")
+                 for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+                 if re.search(r"with_for_update\((?![^)]*\bof=)", line)]
+    assert offenders == [], f"locks without of=: {offenders}"

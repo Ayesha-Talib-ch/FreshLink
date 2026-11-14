@@ -61,7 +61,7 @@ def rotate_refresh_token(db: Session, settings: Settings, raw: str) -> tuple[Use
     """
     now = datetime.now(UTC)
     token = db.scalar(
-        select(RefreshToken).where(RefreshToken.token_hash == hash_refresh_token(raw)).with_for_update()
+        select(RefreshToken).where(RefreshToken.token_hash == hash_refresh_token(raw)).with_for_update(of=RefreshToken)
     )
     if token is None:
         raise _invalid()

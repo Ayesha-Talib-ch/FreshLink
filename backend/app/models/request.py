@@ -49,6 +49,9 @@ class FoodRequest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     listing: Mapped[FoodListing] = relationship(lazy="joined", innerjoin=True)
     receiver: Mapped[ReceiverProfile] = relationship(lazy="joined", innerjoin=True)
+    # The confirmed decision for this request (allocation stage), if there is one.
+    allocation: Mapped["Allocation | None"] = relationship(lazy="selectin", uselist=False,  # noqa: F821
+                                                           viewonly=True)
 
 
 class RequestStatusHistory(UUIDPrimaryKeyMixin, Base):

@@ -4,3 +4,4 @@
 pytest==9.2.0
 pytest-cov==7.1.0  # coverage report: pytest --cov=app --cov-report=term-missing
 httpx2==2.16.0  # used by FastAPI's TestClient (successor of httpx recommended by Starlette)
+hypothesis==6.170.15  # property-based tests: checks rules against thousands of random cases

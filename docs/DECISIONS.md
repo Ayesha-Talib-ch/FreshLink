@@ -77,6 +77,17 @@ This file records decisions taken during development and any questions that are 
 | D60 | 2026-11-14 | Rejections need a reason (≥ 5 characters), shown to the receiver; an admin's rejection is audited | Spec 4.1 "reject requests with a reason"; spec 4.4.6 admin intervention |
 | D61 | 2026-11-14 | `purpose` is optional for all receivers | Spec 4.2.3 says "if required"; no rule makes it required yet |
 
+| D62 | 2026-11-14 | Stage 5 split: 5a allocation first, then 5b matching | Allocation is the spec's core example; matching's fairness factor needs allocation history |
+| D63 | 2026-11-14 | Allocation uses exact pure-Python algorithms (`app/engines/allocation.py`): greedy for priority-weighted and first-come, largest-remainder rounding for proportional-fair; OR-Tools CP-SAT is **not** used | With only "total ≤ available" and per-request caps, greedy is provably optimal (plan issue M10). Correctness is shown with property-based tests (Hypothesis, 9,000 random cases). A CP-SAT comparison belongs in the AI-evaluation stage |
+| D64 | 2026-11-14 | Request caps = min(requested, the receiver's capacity in the same unit); ineligible, suspended or unverified receivers get 0 | Spec 6.4 constraints |
+| D65 | 2026-11-14 | Default policy is priority-weighted; ties go to the earlier request | Plan section 12, decision 4; reproduces spec 5.5 exactly (15 / 10 / 5) |
+| D66 | 2026-11-14 | Every suggestion (run) stores a JSONB snapshot of all inputs; only the newest draft can be confirmed; a confirm re-checks the listing version, the remaining quantity and every request's status under a row lock, otherwise 409 `RUN_STALE` | Reproducibility (plan 3.3) and safety under concurrent changes (plan issue H5) |
+| D67 | 2026-11-14 | Changing a suggested quantity needs a written reason (≥ 5 characters); confirmations by admins or with overrides go to the audit log | Spec 4.4.7: "override recommendations with a recorded reason" |
+| D68 | 2026-11-14 | Requests that end up with 0 are rejected with the line's explanation; a listing with nothing left becomes `fully_allocated`; cancelling an allocation returns the quantity and reactivates the listing (if its deadline hasn't passed) | Receivers always get an answer; food is never lost |
+| D69 | 2026-11-14 | Over-allocation is blocked three times: the engine, the confirm check, and the database CHECK (allocated ≤ total), which is mapped to 409 `ALLOCATION_CONFLICT` | Defence in depth; tested by switching each layer off |
+| D70 | 2026-11-14 | Every `SELECT … FOR UPDATE` names its table (`with_for_update(of=Model)`), enforced by a guard test | Locking a model that auto-joins optional rows fails in PostgreSQL; this caused two bugs |
+| D71 | 2026-11-14 | No minimum allocation per receiver yet | Plan mentions an optional `min_alloc` setting; it needs `platform_settings` (admin stage) and CP-SAT |
+
 ## API review after Stage 2a (2026-11-14)
 
 All 25 endpoints were reviewed: coverage went from 98% to 99% (the remaining 5 lines are trivial), 4 problems were fixed (message prefix, wrong 422 docs, missing CORS header on 500, Swagger cookie flow), and every fix has a test that was shown to fail without it.

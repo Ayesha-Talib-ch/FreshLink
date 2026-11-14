@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
-from app.domain.enums import CollectionPreference, ListingStatus, QuantityUnit, RequestStatus
+from app.domain.enums import AllocationStatus, CollectionPreference, ListingStatus, QuantityUnit, RequestStatus
 from app.schemas.listings import ProviderCard
 
 
@@ -67,6 +67,17 @@ class RequestReceiverSummary(BaseModel):
     contact_phone: str
 
 
+class AllocationBrief(BaseModel):
+    """Shown on a request: the decision about it, if any (allocation stage)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    approved_quantity: float
+    status: AllocationStatus
+    decision_reason: str
+
+
 class RequestOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -78,6 +89,7 @@ class RequestOut(BaseModel):
     collection_preference: CollectionPreference
     preferred_pickup_at: datetime | None
     status: RequestStatus
+    allocation: AllocationBrief | None = None  # the approved quantity, once decided
     rejection_reason: str | None
     responded_at: datetime | None
     distance_km: float  # pickup point -> receiver's saved location (straight line)
