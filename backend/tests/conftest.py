@@ -94,6 +94,11 @@ def test_db_engine() -> Iterator[Engine]:
     engine.dispose()
 
 
+# Tables filled by migrations with starting data (categories). They are NOT emptied
+# between tests; tests must not change them (or must undo their changes).
+SEEDED_TABLES = {"provider_categories", "receiver_categories", "food_categories"}
+
+
 @pytest.fixture(autouse=True)
 def _empty_tables_after_test(request: pytest.FixtureRequest) -> Iterator[None]:
     """Every test starts with empty tables, so tests can't affect each other."""
@@ -101,7 +106,7 @@ def _empty_tables_after_test(request: pytest.FixtureRequest) -> Iterator[None]:
     if "test_db_engine" not in request.fixturenames:
         return
     engine: Engine = request.getfixturevalue("test_db_engine")
-    tables = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
+    tables = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables if t.name not in SEEDED_TABLES)
     if tables:
         with engine.begin() as conn:
             conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))

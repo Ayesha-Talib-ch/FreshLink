@@ -16,6 +16,8 @@ from app.domain.validation import (
 )
 from app.schemas.user import UserOut
 
+Platform = Literal["web", "mobile"]
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -53,10 +55,36 @@ class LoginRequest(BaseModel):
     # One field accepts either the email address or the phone number.
     identifier: str = Field(min_length=3, max_length=254, examples=["ali@example.com"])
     password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    # web: refresh token goes into an httpOnly cookie (JavaScript can't read it)
+    # mobile: refresh token is returned in the JSON body (app keeps it in SecureStore)
+    platform: Platform = "web"
+    device_label: str | None = Field(default=None, max_length=100, examples=["Samsung A54"])
+
+
+class RefreshRequest(BaseModel):
+    # Mobile sends the token here; the website sends nothing (the cookie is used).
+    refresh_token: str | None = Field(default=None, max_length=200)
+
+
+class LogoutRequest(RefreshRequest):
+    pass
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    new_password: str = Field(max_length=PASSWORD_MAX_LENGTH)
+    platform: Platform = "web"
+
+    @field_validator("new_password")
+    @classmethod
+    def strong_password(cls, value: str) -> str:
+        return check_password_strength(value)
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
-    expires_in: int  # seconds
+    expires_in: int  # seconds until the access token expires
+    # Only filled for mobile. For the website it is null: the token is in the cookie.
+    refresh_token: str | None = None
     user: UserOut

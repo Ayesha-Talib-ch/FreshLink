@@ -13,7 +13,9 @@ Development started. Each stage is added and tested one at a time.
 | 0a. Repository scaffold + backend skeleton | Done |
 | 0b. PostgreSQL (Docker), SQLAlchemy, Alembic migrations, error format, DB health check | Done |
 | 1a. Users table, register, login, `/auth/me`, role checks, create-admin command | Done |
-| 1b. Refresh tokens, logout, change password, login rate limiting | Next |
+| 1b. Refresh tokens (rotation + reuse detection), logout, logout-all, change password, login rate limiting | Done |
+| 2a. Categories (seeded), public lookups, provider/receiver/volunteer profiles, receiver food preferences (capacity), volunteer availability, account update | Done |
+| 2b. Document upload, verification requests, admin approve / reject / request info | Next |
 
 There's no website or mobile UI yet.
 
@@ -74,6 +76,7 @@ cd D:\University\FreshLink\backend
 .\.venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload     # start the API at http://127.0.0.1:8000
 pytest                            # run all tests (needs the database running)
+pytest --cov=app --cov-report=term-missing   # also show which code lines no test runs
 ```
 
 - Health check: http://127.0.0.1:8000/api/v1/health (returns 503 if the database is down)

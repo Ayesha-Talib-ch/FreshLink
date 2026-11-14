@@ -25,6 +25,14 @@ class AccountStatus(StrEnum):
     SUSPENDED = "suspended"
 
 
+class ClientPlatform(StrEnum):
+    """Which app a login session belongs to. It only changes HOW the refresh
+    token travels (web: httpOnly cookie, mobile: JSON body); the rules are the same."""
+
+    WEB = "web"
+    MOBILE = "mobile"
+
+
 class VerificationStatus(StrEnum):
     """Single source of truth for approval (Technical Plan section 3.4)."""
 
@@ -33,3 +41,42 @@ class VerificationStatus(StrEnum):
     INFO_REQUESTED = "info_requested"
     APPROVED = "approved"
     REJECTED = "rejected"
+
+
+class PerishabilityClass(StrEnum):
+    """Broad food type. Different classes need different date information
+    (spec section 9.6: not every category has identical shelf-life rules)."""
+
+    COOKED = "cooked"
+    BAKERY = "bakery"
+    FRESH_PRODUCE = "fresh_produce"
+    DAIRY = "dairy"
+    PACKAGED = "packaged"
+    OTHER = "other"
+
+
+class QuantityUnit(StrEnum):
+    """Every quantity carries a unit; quantities in different units are never added
+    together (Technical Plan issue H1)."""
+
+    KG = "kg"
+    LITRE = "litre"
+    PIECE = "piece"
+    PACKAGE = "package"
+    PORTION = "portion"
+    TRAY = "tray"
+
+
+# Units that can only be whole numbers (you can't donate 2.5 trays).
+COUNTABLE_UNITS = frozenset(
+    {QuantityUnit.PIECE, QuantityUnit.PACKAGE, QuantityUnit.PORTION, QuantityUnit.TRAY}
+)
+
+
+class VehicleType(StrEnum):
+    BICYCLE = "bicycle"
+    MOTORBIKE = "motorbike"
+    RICKSHAW = "rickshaw"
+    CAR = "car"
+    VAN = "van"
+    OTHER = "other"

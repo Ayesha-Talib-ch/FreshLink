@@ -1,4 +1,4 @@
-"""Registration, login and admin creation.
+"""Registration, login, admin creation and password changes.
 
 Used by the API (app/api/v1/auth.py) and by the create-admin command
 (app/cli.py), so the rules exist in exactly one place.
@@ -15,6 +15,8 @@ from app.core.security import burn_dummy_verification, hash_password, verify_pas
 from app.domain.enums import AccountStatus, UserRole, VerificationStatus
 from app.domain.validation import normalize_phone
 from app.models.user import User
+from app.services.token_service import revoke_all_for_user
+
 
 def _invalid_credentials() -> AppError:
     # One message for "no such user" and "wrong password", so attackers
@@ -115,3 +117,23 @@ def authenticate(db: Session, *, identifier: str, password: str) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+def end_all_sessions(db: Session, user: User) -> None:
+    """Log the user out everywhere: old access tokens stop working (token_version)
+    and every refresh token is revoked. The caller commits."""
+    user.token_version += 1
+    revoke_all_for_user(db, user.id)
+
+
+def change_password(db: Session, user: User, *, current_password: str, new_password: str) -> None:
+    valid, _ = verify_password(current_password, user.password_hash)
+    if not valid:
+        # 400, not 401: the user IS logged in; only the typed password is wrong.
+        raise AppError(400, "WRONG_CURRENT_PASSWORD", "Your current password is incorrect.")
+    if current_password == new_password:
+        raise AppError(400, "PASSWORD_UNCHANGED", "The new password must be different from the current one.")
+    user.password_hash = hash_password(new_password)
+    # Anyone who knew the old password and is logged in elsewhere is logged out.
+    end_all_sessions(db, user)
+    # The caller issues fresh tokens for THIS device, then commits.

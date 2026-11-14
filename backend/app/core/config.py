@@ -67,6 +67,21 @@ class Settings(BaseSettings):
     jwt_secret: SecretStr | None = None
     jwt_algorithm: Literal["HS256"] = "HS256"
     access_token_expire_minutes: int = Field(default=15, ge=1, le=24 * 60)
+    refresh_token_expire_days: int = Field(default=14, ge=1, le=90)
+
+    # Website refresh-token cookie. "Secure" means the browser only sends it
+    # over HTTPS (browsers also allow it on http://localhost for development).
+    refresh_cookie_name: str = "freshlink_refresh"
+    refresh_cookie_secure: bool = True
+
+    # Brute-force protection: after this many FAILED logins within the window,
+    # further attempts for that account, or from that IP address, are refused.
+    # The IP limit is higher on purpose: in Pakistan, mobile networks put many
+    # users behind ONE shared IP address (carrier-grade NAT), so a low IP limit
+    # would lock out innocent people who share it.
+    login_max_failures_per_account: int = Field(default=5, ge=1)
+    login_max_failures_per_ip: int = Field(default=20, ge=1)
+    login_failure_window_seconds: int = Field(default=60, ge=1)
 
     @field_validator("cors_origins", mode="before")
     @classmethod

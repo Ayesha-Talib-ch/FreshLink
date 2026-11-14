@@ -62,3 +62,28 @@ def test_create_admin_invalid_phone_argument(monkeypatch: pytest.MonkeyPatch, ca
     code = cli.main(["create-admin", "--email", "a@example.com", "--name", "X Y", "--phone", "123"])
     assert code == 1
     assert "valid phone number" in capsys.readouterr().out
+
+
+def test_create_admin_works_in_a_cp1252_windows_terminal(test_settings: Settings, db_session: Session) -> None:
+    """Regression: printing a check-mark symbol crashed in terminals using code page 1252."""
+    import os
+    import subprocess
+    import sys
+
+    script = (
+        "import builtins, sys\n"
+        "from app import cli\n"
+        "typed = iter(['cp1252.admin@example.com', 'Code Page Admin', '0300 1110777'])\n"
+        "hidden = iter(['password123', 'Admin-Fresh-2026', 'Admin-Fresh-2026'])\n"
+        "builtins.input = lambda p='': next(typed)\n"
+        "cli.getpass.getpass = lambda p='': next(hidden)\n"
+        "sys.exit(cli.main(['create-admin']))\n"
+    )
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252",
+           "DATABASE_URL": test_settings.database_url.get_secret_value()}
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
+                            encoding="cp1252", env=env, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "[x] This password is too common" in result.stdout
+    assert "[OK] Super admin created: cp1252.admin@example.com" in result.stdout
+    assert db_session.scalar(select(User).where(User.email == "cp1252.admin@example.com")) is not None

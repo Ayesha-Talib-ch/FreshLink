@@ -6,6 +6,9 @@ Usage, from the backend/ folder with the venv active:
 The password is typed at a hidden prompt. It is never passed as a command
 argument (that would be saved in the terminal history) and never stored in
 the repository.
+
+Output uses plain ASCII only: some Windows terminals (code page 1252) crash
+when printing symbols like a check mark.
 """
 
 import argparse
@@ -30,7 +33,7 @@ def _ask(prompt: str, validate, *, secret: bool = False) -> str:  # noqa: ANN001
             return validate(raw)
         except (ValueError, ValidationError) as exc:
             message = exc.errors()[0]["msg"] if isinstance(exc, ValidationError) else str(exc)
-            print(f"  ✗ {message}")
+            print(f"  [x] {message}")
 
 
 def _validate_name(raw: str) -> str:
@@ -54,7 +57,7 @@ def create_admin_command(args: argparse.Namespace) -> int:
         )
         if getpass.getpass("Repeat password: ") == password:
             break
-        print("  ✗ The passwords don't match. Try again.")
+        print("  [x] The passwords don't match. Try again.")
 
     settings = get_settings()
     engine = create_db_engine(settings)
@@ -69,7 +72,7 @@ def create_admin_command(args: argparse.Namespace) -> int:
     finally:
         engine.dispose()
 
-    print(f"✓ Super admin created: {user.email} (id {user.id})")
+    print(f"[OK] Super admin created: {user.email} (id {user.id})")
     return 0
 
 

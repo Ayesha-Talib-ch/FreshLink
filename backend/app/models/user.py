@@ -6,27 +6,13 @@ go into separate profile tables in the next stage, linked by user_id.
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, Integer, String, false, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, String, false, text
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.domain.enums import AccountStatus, UserRole, VerificationStatus
-from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
-
-
-def _str_enum(enum_cls: type, name: str) -> Enum:
-    """Store an enum as VARCHAR + CHECK (not a native PostgreSQL ENUM type),
-    so adding a value later is a simple migration (Technical Plan section 3.1)."""
-    return Enum(
-        enum_cls,
-        name=name,
-        native_enum=False,
-        create_constraint=True,
-        length=20,
-        values_callable=lambda members: [m.value for m in members],
-        validate_strings=True,
-    )
+from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin, str_enum
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -44,13 +30,13 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Only the Argon2 hash is stored, never the password itself.
     password_hash: Mapped[str] = mapped_column(String(255))
 
-    role: Mapped[UserRole] = mapped_column(_str_enum(UserRole, "user_role"))
+    role: Mapped[UserRole] = mapped_column(str_enum(UserRole, "user_role"))
     account_status: Mapped[AccountStatus] = mapped_column(
-        _str_enum(AccountStatus, "account_status"),
+        str_enum(AccountStatus, "account_status"),
         server_default=AccountStatus.ACTIVE.value,
     )
     verification_status: Mapped[VerificationStatus] = mapped_column(
-        _str_enum(VerificationStatus, "verification_status"),
+        str_enum(VerificationStatus, "verification_status"),
         server_default=VerificationStatus.NOT_SUBMITTED.value,
     )
 
