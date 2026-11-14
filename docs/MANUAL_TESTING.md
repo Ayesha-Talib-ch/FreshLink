@@ -1,6 +1,6 @@
 # FreshLink — Manual Testing Guide (Stages 0–6b)
 
-This guide tests **every API built so far (146 endpoints)** by hand in Swagger UI.
+This guide tests **every API built so far (154 endpoints)** by hand in Swagger UI.
 Each step says exactly what to type and what you should see.
 
 - **Time needed:** about 165 minutes
@@ -707,6 +707,25 @@ Open a **second** PowerShell window in `backend` (venv active) next to the runni
 | ☐ | `python -m app.cli run-job file_cleanup` | `[OK] file_cleanup: unattached uploads deleted 0, files without record deleted 0` |
 | ☐ | Admin: `GET /api/v1/admin/jobs/runs?job=urgency_scan` | the runs, newest first |
 | ☐ | Stop the worker with **Ctrl+C** | `[OK] Worker stopped.` (a new worker can start again) |
+
+
+### 10.19 Surplus estimation (Stage 10a)
+
+**Set up (once).** In `backend` with the venv active:
+`python ..\ml\data\generate.py`, then `python -m app.cli train-surplus --csv ..\ml\data\synthetic_daily_logs.csv`
+(expect `[OK] surplus-...: Ridge, hold-out MAE ... Activated.`), then
+`python ..\ml\data\generate.py --provider P07 --import-csv bakery.csv` (a synthetic bakery's history).
+
+| ✓ | Step | Expected |
+|---|---|---|
+| ☐ | Provider: `POST /api/v1/ai/surplus-estimates` with `{"food_category_id": "<Bakery items>", "target_date": "<tomorrow>"}` | **201** `method: "category_median"` or **422** `NO_HISTORY`; `confidence: "low"` |
+| ☐ | Provider: `POST /api/v1/providers/me/daily-logs/import` with the file `bakery.csv` (Swagger: **Choose File**) | **200** `{"created": 11x, "updated": 0}`: about 120 days ending yesterday |
+| ☐ | Provider: `POST /api/v1/providers/me/daily-logs` with yesterday, Bakery items, `package`, produced 120, sold 95 | **201** with `surplus_qty: "25.00"`; the same day again gives **200** (updated) |
+| ☐ | Same with `"unit": "kg"` | **422** `INVALID_DAILY_LOG` (this category is logged in packages) |
+| ☐ | Ask for the Bakery items estimate again | `method: "model"`, `confidence: "normal"`, a range `lower_qty` ... `upper_qty`, and the note *"This is an estimate ... not a guarantee ..."* |
+| ☐ | Provider: `GET /api/v1/ai/surplus-estimates` | your estimates; `actual_qty` appears once that day is logged |
+| ☐ | Admin: `GET /api/v1/admin/ml/models` | the model with `data_source: "synthetic"` and its hold-out metrics vs the baselines |
+| ☐ | Admin: `POST /api/v1/admin/jobs/surplus_retrain/run` | **200** with `trained: false` (not enough real logs yet) or `trained: true` |
 
 
 ---

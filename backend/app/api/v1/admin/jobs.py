@@ -55,7 +55,8 @@ def run_now(name: str, request: Request, admin: AdminUser, db: DbSession, client
     """Run a job immediately (e.g. the urgency scan before a demo). If the worker is running the same
     job at this moment, this run is recorded as "skipped" instead of running twice. Audited."""
     state = request.app.state
-    run = job_service.run_job(state.engine, state.session_factory, state.storage, _known(name), "admin")
+    run = job_service.run_job(state.engine, state.session_factory, state.storage, _known(name), "admin",
+                              ml_artifacts=state.settings.ml_artifacts_dir)
     record(db, actor=admin, action="job.run", entity_type="job", entity_id=run.id, client=client, reason=name,
            after={"status": run.status, "result": run.result})
     db.commit()

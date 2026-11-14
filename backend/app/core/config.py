@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     max_upload_mb: int = Field(default=5, ge=1, le=50)
     max_files_per_user: int = Field(default=30, ge=1)
 
+    # ---------- Machine learning (Stage 10) ----------
+    # Trained model files (git-ignored; regenerated with `python -m app.cli train-surplus`).
+    ml_artifacts_dir: Path = BACKEND_DIR.parent / "ml" / "artifacts"
+
     # ---------- Authentication ----------
     # Secret key that signs login tokens. Anyone who knows it can forge a token
     # for any user, so it lives only in backend/.env and must be long and random.

@@ -120,6 +120,7 @@ def test_settings(test_db_engine: Engine, tmp_path: Path) -> Settings:
         update={
             "app_env": "test",
             "storage_dir": tmp_path / "storage",  # uploads go to a temporary folder per test
+            "ml_artifacts_dir": tmp_path / "ml_artifacts",  # trained models too
             "database_url": SecretStr(url),
             "jwt_secret": SecretStr(TEST_JWT_SECRET),
             "access_token_expire_minutes": 15,

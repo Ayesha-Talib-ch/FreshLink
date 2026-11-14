@@ -13,6 +13,7 @@ from app.models.issue import IssueReport
 from app.models.job import JobRun
 from app.models.listing import FoodListing, ListingStatusHistory
 from app.models.matching import MatchRecommendation
+from app.models.ml import MlModel, ProviderDailyLog, SurplusPrediction
 from app.models.notification import Announcement, Notification, NotificationCategory
 from app.models.setting import PlatformSetting
 from app.models.profiles import (
@@ -48,15 +49,18 @@ __all__ = [
     "JobRun",
     "ListingStatusHistory",
     "MatchRecommendation",
+    "MlModel",
     "Notification",
     "NotificationCategory",
     "PlatformSetting",
     "ProviderCategory",
+    "ProviderDailyLog",
     "ProviderProfile",
     "ReceiverCategory",
     "ReceiverFoodPreference",
     "ReceiverProfile",
     "StoredFile",
+    "SurplusPrediction",
     "RefreshToken",
     "RequestStatusHistory",
     "UrgencyRuleRow",

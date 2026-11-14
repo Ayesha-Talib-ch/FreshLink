@@ -231,3 +231,17 @@ class IssueStatus(StrEnum):
     OPEN = "open"
     IN_REVIEW = "in_review"
     RESOLVED = "resolved"
+
+
+class LogSource(StrEnum):
+    """Where a provider daily log came from (plan 7.1: synthetic rows are always labelled)."""
+
+    MANUAL = "manual"
+    IMPORT = "import"  # CSV upload
+    SYNTHETIC = "synthetic"
+
+
+class EstimateMethod(StrEnum):
+    MODEL = "model"  # the trained machine-learning model
+    OWN_AVERAGE = "own_average"  # cold start: the provider's own same-weekday average (baseline B2)
+    CATEGORY_MEDIAN = "category_median"  # cold start: no own history, the median of other providers
